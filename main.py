@@ -13,7 +13,7 @@ from model import wideresnet, preactresnet
 from utils.args import parser
 from utils.utils import *
 
-from train import train_trades
+from train import train_standard, train_trades
 
 
 def main(args):
@@ -45,7 +45,7 @@ def main(args):
     else:
         tb_writer = None
 
-    # use WRN-34-10
+    # choose model
     device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
     if args.model_name == 'wrn34-10':
         model = wideresnet.WideResNet(depth=34,
@@ -66,10 +66,15 @@ def main(args):
     else:
         raise 'no match model'
 
-    if args.at_method == 'trades':
+    # choose adversarial training method
+    if args.at_method == 'standard':
+        trainer = train_standard.Trainer_Standard(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'trades':
         trainer = train_trades.Trainer_Trades(args, tb_writer, args.attack_method, device)
+    else:
+        raise 'no match at method'
 
-
+    # dataset transforms
     transform_train = transforms.Compose([
         transforms.ToTensor(),
         transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
@@ -82,6 +87,8 @@ def main(args):
     transform_test = transforms.Compose([
         transforms.ToTensor(),
     ])
+
+    # choose dataset
     if args.dataset == 'cifar10':
         train_dataset = torchvision.datasets.CIFAR10(os.path.join(project_path, args.data_root),
                                                      train=True,
