@@ -157,6 +157,8 @@ def main(args):
                                   pin_memory=True)
 
     elif args.dataset == 'tinyimagenet':
+        if not os.path.exists(os.path.join(project_path, args.data_root, 'tiny-imagenet-200')):
+            download_tinyimagenet(args)
         train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(project_path,
                                                                            args.data_root,
                                                                            'tiny-imagenet-200',
