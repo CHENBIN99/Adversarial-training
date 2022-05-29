@@ -3,8 +3,8 @@ import argparse
 
 def parser():
     parser = argparse.ArgumentParser(description='AT')
-    parser.add_argument('--todo', choices=['train_file', 'valid', 'test'], default='train_file',
-                        help='what behavior want to do: train_file | valid | test')
+    parser.add_argument('--seed', default=1,
+                        help='random seed')
     parser.add_argument('--data_root', default='data',
                         help='the directory to save the dataset')
     parser.add_argument('--adv_train', action='store_true')
@@ -41,7 +41,7 @@ def parser():
                         help='the parameter of l2 restriction for weights')
     parser.add_argument('--dataset', type=str, default='cifar10', help='training dataset')
     parser.add_argument('--max_epochs', type=int, default=100, help='total epochs need to run')
-    parser.add_argument('--num_works', type=int, default=0, help='numbers of the workers')
+    parser.add_argument('--num_works', type=int, default=4, help='numbers of the workers')
     parser.add_argument('--n_eval_step', type=int, default=10,
                         help='number of iteration per one evaluation')
     parser.add_argument('--n_checkpoint_step', type=int, default=1,

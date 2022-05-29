@@ -18,18 +18,31 @@ class Trainer_base:
 
         self.loss_fn = loss_function
 
-    def get_attack(self, model):
+    def get_attack(self, model, epsilon, alpha, iters):
         if self.attack_name == 'pgd':
             return torchattacks.PGD(model=model,
-                                    eps=self.args.epsilon,
-                                    alpha=self.args.alpha,
-                                    steps=self.args.iters,
+                                    eps=epsilon,
+                                    alpha=alpha,
+                                    steps=iters,
                                     random_start=True)
         elif self.attack_name == 'fgsm':
             return torchattacks.FGSM(model=model,
                                      eps=self.args.epsilon)
         else:
             raise 'no match attack method'
+
+    def get_attack_name(self, train=True, upper=True):
+        if self.attack_name == 'pgd':
+            if train:
+                return f'PGD{self.args.iters}'
+            else:
+                return f'PGD{self.args.iters_eval}'
+        elif self.attack_name == 'fgsm':
+            return 'FGSM'
+
+    def save_checkpoint(self, model, epoch):
+        file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
+        save_model(model, file_name)
 
     def train(self, **kwargs):
         pass
@@ -39,7 +52,7 @@ class Trainer_base:
         num = 0
         total_adv_acc = 0.
 
-        attack_method = self.get_attack(model)
+        attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
 
         model.eval()
 

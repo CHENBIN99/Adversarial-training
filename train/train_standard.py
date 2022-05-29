@@ -62,15 +62,14 @@ class Trainer_Standard(Trainer_base):
                                                epoch * len(train_loader) + idx)
                         self.writer.add_scalar('Train/Clean_acc', std_acc,
                                                epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Adv_acc', adv_acc,
+                        self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
                                                epoch * len(train_loader) + idx)
                         self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
                                                epoch * len(train_loader) + idx)
                 _iter += 1
 
             if epoch % self.args.n_checkpoint_step == 0:
-                file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
-                save_model(model, file_name)
+                self.save_checkpoint(model, epoch)
 
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)
@@ -80,7 +79,7 @@ class Trainer_Standard(Trainer_base):
 
                 if self.writer is not None:
                     self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
-                    self.writer.add_scalar('Valid/Adv_acc', valid_adv_acc, epoch)
+                    self.writer.add_scalar(f'Valid/{self.get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
 
             scheduler.step()
 

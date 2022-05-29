@@ -22,6 +22,7 @@ class BasicBlock(nn.Module):
         self.equalInOut = (in_planes == out_planes)
         self.convShortcut = (not self.equalInOut) and nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
                                padding=0, bias=False) or None
+
     def forward(self, x):
         if not self.equalInOut:
             x = self.relu1(self.bn1(x))
