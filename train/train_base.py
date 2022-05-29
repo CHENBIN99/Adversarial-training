@@ -42,7 +42,7 @@ class Trainer_base:
 
     def save_checkpoint(self, model, epoch):
         file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
-        save_model(model, file_name)
+        torch.save(model.state_dict(), file_name)
 
     def train(self, **kwargs):
         pass

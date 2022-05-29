@@ -68,4 +68,3 @@ def deal_tinyimagenet(folder_path):
 
     os.rmdir('./tiny-imagenet-200/val/images')
 
-
