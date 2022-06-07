@@ -41,7 +41,7 @@ class Trainer_Mart(Trainer_base):
                 clean_output = model(data)
 
                 # MART Loss
-                criterion_kl = torch.nn.KLDivLoss(reduction='sum')
+                criterion_kl = torch.nn.KLDivLoss(reduction='none')
 
                 adv_probs = F.softmax(adv_output, dim=1)
                 tmp1 = torch.argsort(adv_probs, dim=1)[:, -2:]
@@ -51,7 +51,7 @@ class Trainer_Mart(Trainer_base):
                 nat_probs = F.softmax(clean_output, dim=1)
                 true_probs = torch.gather(nat_probs, 1, (label.unsqueeze(1)).long()).squeeze()
                 loss_robust = (1.0 / len(data)) * torch.sum(
-                    torch.sum(criterion_kl(torch.log(adv_probs + 1e-12), nat_probs)) * (1.0000001 - true_probs))
+                    torch.sum(criterion_kl(torch.log(adv_probs + 1e-12), nat_probs), dim=1) * (1.0000001 - true_probs))
 
                 loss = loss_adv + self.args.beta * loss_robust
 
