@@ -73,7 +73,7 @@ def parser():
 
     # Choose at method
     parser.add_argument('--at_method', type=str, default='standard',
-                        choices=['standard', 'trades'])
+                        choices=['standard', 'trades', 'mart'])
 
     return parser.parse_args()
 

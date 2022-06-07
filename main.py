@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import datetime
 import torch.nn.functional as F
 import torchvision
 from tensorboardX import SummaryWriter
@@ -13,18 +12,7 @@ from model import wideresnet, preactresnet
 from utils.args import parser
 from utils.utils import *
 
-from train import train_standard, train_trades
-
-
-# fix random seed
-def same_seeds(seed):
-    torch.manual_seed(seed)                     # 固定随机种子（CPU）
-    if torch.cuda.is_available():               # 固定随机种子（GPU)
-        torch.cuda.manual_seed(seed)            # 为当前GPU设置
-        torch.cuda.manual_seed_all(seed)        # 为所有GPU设置
-    np.random.seed(seed)                        # 保证后续使用random函数时，产生固定的随机数
-    torch.backends.cudnn.benchmark = False      # GPU、网络结构固定，可设置为True
-    torch.backends.cudnn.deterministic = True   # 固定网络结构
+from train import train_standard, train_trades, train_mart
 
 
 def main(args):
@@ -32,14 +20,7 @@ def main(args):
     project_path = get_project_path()
     setattr(args, 'root_path', project_path)
 
-    cur_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-    if args.at_method == 'standard':
-        exp_name = f'Standard_{args.dataset}_{args.learning_rate}_{cur_time}'
-    elif args.at_method == 'trades':
-        exp_name = f'TRADES_{args.beta}_{args.dataset}_{args.learning_rate}_{cur_time}'
-    else:
-        raise 'no match at method'
-
+    exp_name = get_exp_name(args)
     tb_folder = os.path.join(project_path, args.save_root, args.exp_series, exp_name)
     model_folder = os.path.join(project_path, args.model_root, args.exp_series, exp_name)
 
@@ -93,6 +74,8 @@ def main(args):
         trainer = train_standard.Trainer_Standard(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'trades':
         trainer = train_trades.Trainer_Trades(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'mart':
+        trainer = train_mart.Trainer_Mart(args, tb_writer, args.attack_method, device)
     else:
         raise 'no match at_method'
 

@@ -3,9 +3,50 @@ import numpy as np
 import torch
 import glob
 from shutil import move
+import datetime
 
 import torchvision
 from torch.utils.data import DataLoader
+
+
+# fix random seed
+def same_seeds(seed):
+    torch.manual_seed(seed)                     # 固定随机种子（CPU）
+    if torch.cuda.is_available():               # 固定随机种子（GPU)
+        torch.cuda.manual_seed(seed)            # 为当前GPU设置
+        torch.cuda.manual_seed_all(seed)        # 为所有GPU设置
+    np.random.seed(seed)                        # 保证后续使用random函数时，产生固定的随机数
+    torch.backends.cudnn.benchmark = False      # GPU、网络结构固定，可设置为True
+    torch.backends.cudnn.deterministic = True   # 固定网络结构
+
+
+def get_exp_name(args):
+    # time
+    curr_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+
+    # model name
+    if args.model_name == 'wrn34-10':
+        model_name = 'wrn3410'
+    elif args.model_name == 'resnet18':
+        model_name = 'resnet18'
+    elif args.model_name == 'resnet50':
+        model_name = 'resnet50'
+    elif args.model_name == 'preactresnet18':
+        model_name = 'preact18'
+    else:
+        raise 'no match model'
+
+    # attack method
+    if args.at_method == 'standard':
+        exp_name = f'Standard_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'trades':
+        exp_name = f'TRADES_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'mart':
+        exp_name = f'MART_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    else:
+        raise 'no match at method'
+
+    return exp_name
 
 
 def evaluate(_input, _target, method='mean'):

@@ -1,6 +1,6 @@
 """
-TRADES
-paper: Theoretically Principled Trade-off between Robustness and Accuracy
+MART
+paper: IMPROVING ADVERSARIAL ROBUSTNESS REQUIRES REVISITING MISCLASSIFIED EXAMPLES
 """
 import os
 import sys
@@ -14,9 +14,9 @@ from utils.utils import *
 from train.train_base import Trainer_base
 
 
-class Trainer_Trades(Trainer_base):
+class Trainer_Mart(Trainer_base):
     def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Trades, self).__init__(args, writer, attack_name, device, loss_function)
+        super(Trainer_Mart, self).__init__(args, writer, attack_name, device, loss_function)
 
     def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
@@ -40,12 +40,20 @@ class Trainer_Trades(Trainer_base):
                 adv_output = model(adv_data)
                 clean_output = model(data)
 
-                # TRADES Loss
+                # MART Loss
                 criterion_kl = torch.nn.KLDivLoss(reduction='sum')
-                loss_robust = (1. / self.args.batch_size) * criterion_kl(F.log_softmax(adv_output, dim=1),
-                                                                         F.softmax(clean_output, dim=1))
-                loss_natural = self.loss_fn(clean_output, label)
-                loss = loss_natural + self.args.beta * loss_robust
+
+                adv_probs = F.softmax(adv_output, dim=1)
+                tmp1 = torch.argsort(adv_probs, dim=1)[:, -2:]
+                new_y = torch.where(tmp1[:, -1] == label, tmp1[:, -2], tmp1[:, -1])
+                loss_adv = F.cross_entropy(adv_output, label) + F.nll_loss(torch.log(1.0001 - adv_probs + 1e-12), new_y)
+
+                nat_probs = F.softmax(clean_output, dim=1)
+                true_probs = torch.gather(nat_probs, 1, (label.unsqueeze(1)).long()).squeeze()
+                loss_robust = (1.0 / len(data)) * torch.sum(
+                    torch.sum(criterion_kl(torch.log(adv_probs + 1e-12), nat_probs)) * (1.0000001 - true_probs))
+
+                loss = loss_adv + self.args.beta * loss_robust
 
                 opt.zero_grad()
                 loss.backward()
