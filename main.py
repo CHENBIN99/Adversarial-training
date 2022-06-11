@@ -2,17 +2,14 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import torch.nn.functional as F
-import torchvision
+
 from tensorboardX import SummaryWriter
-from torch.utils.data import DataLoader
-from torchvision import transforms
+
 
 from model import wideresnet, preactresnet
 from utils.args import parser
 from utils.utils import *
-
-from train import train_standard, train_trades, train_mart
+from dataloader import get_dataloader
 
 
 def main(args):
@@ -71,96 +68,23 @@ def main(args):
 
     # choose adversarial training method
     if args.at_method == 'standard':
-        trainer = train_standard.Trainer_Standard(args, tb_writer, args.attack_method, device)
+        from train.train_standard import Trainer_Standard
+        trainer = Trainer_Standard(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'trades':
-        trainer = train_trades.Trainer_Trades(args, tb_writer, args.attack_method, device)
+        from train.train_trades import Trainer_Trades
+        trainer = Trainer_Trades(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'mart':
-        trainer = train_mart.Trainer_Mart(args, tb_writer, args.attack_method, device)
+        from train.train_mart import Trainer_Mart
+        trainer = Trainer_Mart(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'ccg':
+        from train.train_ccg import Trainer_CCG
+        trainer = Trainer_CCG(args, tb_writer, args.attack_method, device)
     else:
         raise 'no match at_method'
 
-    # dataset transforms
-    transform_train = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
-                                          (4, 4, 4, 4), mode='reflect').squeeze()),
-        transforms.ToPILImage(),
-        transforms.RandomCrop(32),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-    ])
+    train_dataloader, valid_dataloader = get_dataloader.get_dataloader(args)
 
-    # choose dataset
-    if args.dataset == 'cifar10':
-        train_dataset = torchvision.datasets.CIFAR10(os.path.join(project_path, args.data_root),
-                                                     train=True,
-                                                     transform=transform_train,
-                                                     download=True)
-
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                  pin_memory=True)
-        # valid
-        valid_dataset = torchvision.datasets.CIFAR10(os.path.join(project_path, args.data_root),
-                                                     train=False,
-                                                     transform=transform_test,
-                                                     download=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                  pin_memory=True)
-
-    elif args.dataset == 'cifar100':
-        train_dataset = torchvision.datasets.CIFAR100(os.path.join(project_path, args.data_root),
-                                                      train=True,
-                                                      transform=transform_train,
-                                                      download=True)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                  pin_memory=True)
-        # valid
-        valid_dataset = torchvision.datasets.CIFAR100(os.path.join(project_path, args.data_root),
-                                                      train=False,
-                                                      transform=transform_test,
-                                                      download=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                  pin_memory=True)
-
-    elif args.dataset == 'svhn':
-        train_dataset = torchvision.datasets.SVHN(os.path.join(project_path, args.data_root),
-                                                  split='train',
-                                                  transform=transform_train,
-                                                  download=True)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                  pin_memory=True)
-        valid_dataset = torchvision.datasets.SVHN(os.path.join(project_path, args.data_root),
-                                                  split='test',
-                                                  transform=transform_test,
-                                                  download=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                  pin_memory=True)
-
-    elif args.dataset == 'tinyimagenet':
-        if not os.path.exists(os.path.join(project_path, args.data_root, 'tiny-imagenet-200')):
-            download_tinyimagenet(args)
-        train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(project_path,
-                                                                           args.data_root,
-                                                                           'tiny-imagenet-200',
-                                                                           'train'),
-                                                         transform=transform_train)
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                                   num_workers=args.num_works, pin_memory=True)
-        valid_dataset = torchvision.datasets.ImageFolder(root=os.path.join(project_path,
-                                                                           args.data_root,
-                                                                           'tiny-imagenet-200',
-                                                                           'val'),
-                                                         transform=transform_train)
-        valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
-                                                   num_workers=args.num_works, pin_memory=True)
-
-    else:
-        raise 'no match dataset'
-
-    trainer.train(model, train_loader, valid_loader, args.adv_train)
+    trainer.train(model, train_dataloader, valid_dataloader, args.adv_train)
 
     print('Train Finished!')
 

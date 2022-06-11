@@ -71,9 +71,13 @@ def parser():
     # TRADES
     parser.add_argument('--beta', type=float, default=6.0)
 
+    # CCG
+    parser.add_argument('--lamda', type=float, default=1.0)
+    parser.add_argument('--T', type=float, default=1.)
+
     # Choose at method
     parser.add_argument('--at_method', type=str, default='standard',
-                        choices=['standard', 'trades', 'mart'])
+                        choices=['standard', 'trades', 'mart', 'ccg'])
 
     return parser.parse_args()
 

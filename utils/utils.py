@@ -43,6 +43,8 @@ def get_exp_name(args):
         exp_name = f'TRADES_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'mart':
         exp_name = f'MART_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'ccg':
+        exp_name = f'CCG_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     else:
         raise 'no match at method'
 
