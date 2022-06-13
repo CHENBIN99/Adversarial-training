@@ -32,7 +32,7 @@ class Trainer_Mart(Trainer_base):
             # train_file
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
-                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
+                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
 
                 model.eval()
                 adv_data = attack_method(data, label)

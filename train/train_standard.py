@@ -6,10 +6,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import torch.nn.functional as F
-
 from utils.utils import *
-
 from train.train_base import Trainer_base
 
 
@@ -31,7 +28,7 @@ class Trainer_Standard(Trainer_base):
             # train_file
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
-                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
+                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
 
                 adv_data = attack_method(data, label)
                 adv_output = model(adv_data)
