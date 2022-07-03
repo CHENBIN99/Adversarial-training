@@ -93,13 +93,6 @@ class PreActResNet(nn.Module):
         out = self.linear(out)
         return out
 
-
-def PreActResNet18(pretrained=False, num_classes=10, device='cpu'):
+def PreActResNet18(num_classes=10):
     model = PreActResNet(PreActBlock, [2, 2, 2, 2], num_classes)
-    if pretrained:
-        script_dir = os.path.dirname(__file__)
-        state_dict = torch.load(
-            script_dir + "/state_dicts/preactresnet18.pt", map_location=device
-        )
-        model.load_state_dict(state_dict)
     return model
