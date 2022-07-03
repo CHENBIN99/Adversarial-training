@@ -90,12 +90,12 @@ def deal_tinyimagenet(folder_path):
     target_folder = os.path.join(folder_path, 'val')
 
     val_dict = {}
-    with open('./tiny-imagenet-200/val/val_annotations.txt', 'r') as f:
+    with open(os.path.join(folder_path, 'val/val_annotations.txt'), 'r') as f:
         for line in f.readlines():
             split_line = line.split('\t')
             val_dict[split_line[0]] = split_line[1]
 
-    paths = glob.glob('./tiny-imagenet-200/val/images/*')
+    paths = glob.glob(os.path.join(folder_path, 'val/images/*'))
     for path in paths:
         file = path.split('/')[-1]
         folder = val_dict[file]
@@ -109,5 +109,5 @@ def deal_tinyimagenet(folder_path):
         dest = target_folder + str(folder) + '/images/' + str(file)
         move(path, dest)
 
-    os.rmdir('./tiny-imagenet-200/val/images')
+    os.rmdir(os.path.join(folder_path, 'val/images'))
 
