@@ -51,7 +51,8 @@ def main(args):
         model = wideresnet.WideResNet(depth=34,
                                       widen_factor=10,
                                       num_classes=num_classes,
-                                      dropRate=0.0).to(device)
+                                      dropRate=0.0,
+                                      stride=1 if args.dataset != 'tinyimagenet' else 2).to(device)
     elif args.model_name == 'resnet18':
         model = torchvision.models.resnet18(pretrained=False)
         model.fc = torch.nn.Linear(512, num_classes)
