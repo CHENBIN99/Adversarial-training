@@ -62,7 +62,7 @@ def main(args):
         model.fc = torch.nn.Linear(2048, num_classes)
         model.to(device)
     elif args.model_name == 'preactresnet18':
-        model = preactresnet.PreActResNet18(num_classes=num_classes)
+        model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if args.dataset != 'tinyimagenet' else 2)
         model.to(device)
     else:
         raise 'no match model'

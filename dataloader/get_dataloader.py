@@ -18,7 +18,7 @@ class MultiDataTransform(object):
 
 def get_dataloader(args):
     # image size
-    if args.dataset == 'cifar10' or args.dataset == 'cifar10' or args.dataset == 'svhn':
+    if args.dataset == 'cifar10' or args.dataset == 'cifar100' or args.dataset == 'svhn':
         image_size = 32
     elif args.dataset == 'tinyimagenet':
         image_size = 64
@@ -43,48 +43,39 @@ def get_dataloader(args):
                                                          train=True,
                                                          transform=transform_train,
                                                          download=True)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                      pin_memory=True)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_works, pin_memory=True)
             # valid
             valid_dataset = torchvision.datasets.CIFAR10(os.path.join(args.root_path, args.data_root),
                                                          train=False,
                                                          transform=transform_test,
                                                          download=True)
-            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                      pin_memory=True)
+            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
+                                      num_workers=args.num_works, pin_memory=True)
 
         elif args.dataset == 'cifar100':
             train_dataset = torchvision.datasets.CIFAR100(os.path.join(args.root_path, args.data_root),
-                                                          train=True,
-                                                          transform=transform_train,
-                                                          download=True)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                      pin_memory=True)
+                                                          train=True, transform=transform_train, download=True)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_works, pin_memory=True)
             # valid
             valid_dataset = torchvision.datasets.CIFAR100(os.path.join(args.root_path, args.data_root),
-                                                          train=False,
-                                                          transform=transform_test,
-                                                          download=True)
-            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                      pin_memory=True)
-
+                                                          train=False, transform=transform_test, download=True)
+            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
+                                      num_workers=args.num_works, pin_memory=True)
         elif args.dataset == 'svhn':
             train_dataset = torchvision.datasets.SVHN(os.path.join(args.root_path, args.data_root),
-                                                      split='train',
-                                                      transform=transform_train,
-                                                      download=True)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_works,
-                                      pin_memory=True)
+                                                      split='train', transform=transform_train, download=True)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_works, pin_memory=True)
             valid_dataset = torchvision.datasets.SVHN(os.path.join(args.root_path, args.data_root),
-                                                      split='test',
-                                                      transform=transform_test,
-                                                      download=True)
-            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_works,
-                                      pin_memory=True)
-
+                                                      split='test', transform=transform_test, download=True)
+            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
+                                      num_workers=args.num_works, pin_memory=True)
         elif args.dataset == 'tinyimagenet':
             if not os.path.exists(os.path.join(args.root_path, args.data_root, 'tiny-imagenet-200')):
                 download_tinyimagenet(args)
+
             train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(args.root_path,
                                                                                args.data_root,
                                                                                'tiny-imagenet-200',
