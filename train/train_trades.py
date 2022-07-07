@@ -7,11 +7,11 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import torch.nn.functional as F
-
 from utils.utils import *
 
 from train.train_base import Trainer_base
+
+from adv_lib.trades_lib import *
 
 
 class Trainer_Trades(Trainer_base):
@@ -32,20 +32,19 @@ class Trainer_Trades(Trainer_base):
             # train_file
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
-                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
 
-                model.eval()
-                adv_data = attack_method(data, label)
-                model.train()
+                adv_data = generate_trades(model=model, x_natural=data, distance='Linf', eps=self.args.epsilon,
+                                           eps_iter=self.args.alpha, nb_iter=self.args.iters, clip_max=1., clip_min=0.)
+
                 adv_output = model(adv_data)
                 clean_output = model(data)
 
                 # TRADES Loss
-                criterion_kl = torch.nn.KLDivLoss(reduction='sum')
-                loss_robust = (1. / self.args.batch_size) * criterion_kl(F.log_softmax(adv_output, dim=1),
-                                                                         F.softmax(clean_output, dim=1))
-                loss_natural = self.loss_fn(clean_output, label)
-                loss = loss_natural + self.args.beta * loss_robust
+                loss_ce = F.cross_entropy(clean_output, label)
+                loss_adv = self.args.beta * F.kl_div(F.log_softmax(adv_output, dim=1), F.softmax(model(data), dim=1),
+                                                     reduction='batchmean')
+
+                loss = loss_ce + loss_adv
 
                 opt.zero_grad()
                 loss.backward()
