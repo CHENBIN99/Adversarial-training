@@ -79,7 +79,7 @@ def get_project_path():
 
 def download_tinyimagenet(args):
     url = 'http://cs231n.stanford.edu/tiny-imagenet-200.zip'
-    os.system(f'wget -p {os.path.join(args.root_path, args.data_root)} {url}')
+    os.system(f'wget -P {os.path.join(args.root_path, args.data_root)} {url}')
     os.system(f'unzip {os.path.join(args.root_path, args.data_root, "tiny-imagenet-200.zip")} '
               f'-d '
               f'{os.path.join(args.root_path, args.data_root, "tiny-imagenet-200")}')
