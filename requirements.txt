@@ -4,7 +4,7 @@ Pillow == 9.0.1
 advertorch == 0.2.3
 foolbox == 3.3.3
 matplotlib == 3.5.1
-numpy == 1.21.2
+numpy == 1.22.0
 opencv_python == 4.5.5.62
 tensorboardX == 2.4.1
 timm == 0.5.4
