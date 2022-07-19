@@ -9,9 +9,82 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.utils import *
 
+import torch.optim as optim
+from torch.autograd import Variable
+import torch.nn as nn
 from train.train_base import Trainer_base
 
 from adv_lib.trades_lib import *
+
+
+def trades_loss(model,
+                x_natural,
+                y,
+                optimizer,
+                step_size=0.003,
+                epsilon=0.031,
+                perturb_steps=10,
+                beta=1.0,
+                distance='l_inf'):
+    # define KL-loss
+    criterion_kl = nn.KLDivLoss(size_average=False)
+    model.eval()
+    batch_size = len(x_natural)
+    # generate adversarial example
+    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    if distance == 'l_inf':
+        for _ in range(perturb_steps):
+            x_adv.requires_grad_()
+            with torch.enable_grad():
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                       F.softmax(model(x_natural), dim=1))
+            grad = torch.autograd.grad(loss_kl, [x_adv])[0]
+            x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
+            x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    elif distance == 'l_2':
+        delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
+        delta = Variable(delta.data, requires_grad=True)
+
+        # Setup optimizers
+        optimizer_delta = optim.SGD([delta], lr=epsilon / perturb_steps * 2)
+
+        for _ in range(perturb_steps):
+            adv = x_natural + delta
+
+            # optimize
+            optimizer_delta.zero_grad()
+            with torch.enable_grad():
+                loss = (-1) * criterion_kl(F.log_softmax(model(adv), dim=1),
+                                           F.softmax(model(x_natural), dim=1))
+            loss.backward()
+            # renorming gradient
+            grad_norms = delta.grad.view(batch_size, -1).norm(p=2, dim=1)
+            delta.grad.div_(grad_norms.view(-1, 1, 1, 1))
+            # avoid nan or inf if gradient is 0
+            if (grad_norms == 0).any():
+                delta.grad[grad_norms == 0] = torch.randn_like(delta.grad[grad_norms == 0])
+            optimizer_delta.step()
+
+            # projection
+            delta.data.add_(x_natural)
+            delta.data.clamp_(0, 1).sub_(x_natural)
+            delta.data.renorm_(p=2, dim=0, maxnorm=epsilon)
+        x_adv = Variable(x_natural + delta, requires_grad=False)
+    else:
+        x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    model.train()
+
+    x_adv = Variable(torch.clamp(x_adv, 0.0, 1.0), requires_grad=False)
+    # zero gradient
+    optimizer.zero_grad()
+    # calculate robust loss
+    logits = model(x_natural)
+    loss_natural = F.cross_entropy(logits, y)
+    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                                    F.softmax(model(x_natural), dim=1))
+    loss = loss_natural + beta * loss_robust
+    return loss, x_adv
 
 
 class Trainer_Trades(Trainer_base):
@@ -33,18 +106,9 @@ class Trainer_Trades(Trainer_base):
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
 
-                adv_data = generate_trades(model=model, x_natural=data, distance='Linf', eps=self.args.epsilon,
-                                           eps_iter=self.args.alpha, nb_iter=self.args.iters, clip_max=1., clip_min=0.)
-
-                adv_output = model(adv_data)
-                clean_output = model(data)
-
-                # TRADES Loss
-                loss_ce = F.cross_entropy(clean_output, label)
-                loss_adv = self.args.beta * F.kl_div(F.log_softmax(adv_output, dim=1), F.softmax(model(data), dim=1),
-                                                     reduction='batchmean')
-
-                loss = loss_ce + loss_adv
+                loss, adv_data = trades_loss(model=model, x_natural=data, y=label, step_size=self.args.alpha,
+                                             epsilon=self.args.epsilon, perturb_steps=self.args.iters, beta=self.args.beta,
+                                             distance='l_inf')
 
                 opt.zero_grad()
                 loss.backward()
@@ -52,10 +116,14 @@ class Trainer_Trades(Trainer_base):
 
                 if _iter % self.args.n_eval_step == 0:
                     # clean data
+                    with torch.no_grad():
+                        clean_output = model(data)
                     pred = torch.max(clean_output, dim=1)[1]
                     std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
                     # adv data
+                    with torch.no_grad():
+                        adv_output = model(adv_data)
                     pred = torch.max(adv_output, dim=1)[1]
                     adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 

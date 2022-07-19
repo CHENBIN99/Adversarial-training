@@ -60,7 +60,7 @@ def mart_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, pe
         torch.sum(kl(torch.log(adv_probs + 1e-12), nat_probs), dim=1) * (1.0000001 - true_probs))
     loss = loss_adv + float(beta) * loss_robust
 
-    return loss
+    return loss, x_adv
 
 
 class Trainer_Mart(Trainer_base):
@@ -81,18 +81,11 @@ class Trainer_Mart(Trainer_base):
             # train_file
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
-                attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
-
-                model.eval()
-                adv_data = attack_method(data, label)
-                model.train()
-                adv_output = model(adv_data)
-                clean_output = model(data)
 
                 # MART Loss
-                loss = mart_loss(model=model, x_natural=data, y=label, optimizer=opt, step_size=self.args.alpha,
-                                 epsilon=self.args.epsilon, perturb_steps=self.args.iters, beta=self.args.beta,
-                                 distance='l_inf')
+                loss, adv_data = mart_loss(model=model, x_natural=data, y=label, optimizer=opt, step_size=self.args.alpha,
+                                           epsilon=self.args.epsilon, perturb_steps=self.args.iters, beta=self.args.beta,
+                                           distance='l_inf')
 
                 opt.zero_grad()
                 loss.backward()
@@ -100,10 +93,14 @@ class Trainer_Mart(Trainer_base):
 
                 if _iter % self.args.n_eval_step == 0:
                     # clean data
+                    with torch.no_grad():
+                        clean_output = model(data)
                     pred = torch.max(clean_output, dim=1)[1]
                     std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
                     # adv data
+                    with torch.no_grad():
+                        adv_output = model(adv_data)
                     pred = torch.max(adv_output, dim=1)[1]
                     adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
