@@ -72,16 +72,14 @@ def get_dataloader(args):
 
             train_dataset = TinyImageNet(root=os.path.join(args.root_path,
                                                            args.data_root,
-                                                           'tiny-imagenet-200',
-                                                           'train'),
+                                                           'tiny-imagenet-200'),
                                          train=True, transform=transform_train)
             train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                        num_workers=args.num_works, pin_memory=True)
 
             valid_dataset = TinyImageNet(root=os.path.join(args.root_path,
                                                            args.data_root,
-                                                           'tiny-imagenet-200',
-                                                           'train'),
+                                                           'tiny-imagenet-200'),
                                          train=False, transform=transform_test)
             valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
                                                        num_workers=args.num_works, pin_memory=True)
