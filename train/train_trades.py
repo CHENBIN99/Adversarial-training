@@ -106,9 +106,9 @@ class Trainer_Trades(Trainer_base):
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
 
-                loss, adv_data = trades_loss(model=model, x_natural=data, y=label, step_size=self.args.alpha,
-                                             epsilon=self.args.epsilon, perturb_steps=self.args.iters, beta=self.args.beta,
-                                             distance='l_inf')
+                loss, adv_data = trades_loss(model=model, x_natural=data, y=label, optimizer=opt,
+                                             step_size=self.args.alpha, epsilon=self.args.epsilon,
+                                             perturb_steps=self.args.iters, beta=self.args.beta, distance='l_inf')
 
                 opt.zero_grad()
                 loss.backward()
