@@ -1,9 +1,11 @@
-import os
-import sys
+import torch
 from torch.utils.data import Dataset, DataLoader
+from torchvision import models, utils, datasets, transforms
 import numpy as np
-import cv2
-from torchvision import transforms
+import sys
+import os
+from PIL import Image
+import numpy as np
 
 
 def download_tinyimagenet(args):
@@ -14,94 +16,116 @@ def download_tinyimagenet(args):
               f'{os.path.join(args.root_path, args.data_root)}')
 
 
-class data(Dataset):
-    def __init__(self, args, type, transform, labels_t, image_names, val_names, val_labels):
-        self.type = type
-        if type == 'train':
-            i = 0
-            self.images = []
-            for label in labels_t:
-                image = []
-                for image_name in image_names[i]:
-                    image_path = os.path.join(args.root_path, 'data/tiny-imagenet-200/train', label, 'images', image_name)
-                    image.append(cv2.imread(image_path))
-                self.images.append(image)
-                i = i + 1
-            self.images = np.array(self.images)
-            self.images = self.images.reshape(-1, 64, 64, 3)
-        elif type == 'val':
-            self.val_images = []
-            for val_image in val_names:
-                val_image_path = os.path.join(args.root_path, 'data/tiny-imagenet-200/val/images', val_image)
-                self.val_images.append(cv2.imread(val_image_path))
-            self.val_images = np.array(self.val_images)
+class TinyImageNet(Dataset):
+    def __init__(self, root, train=True, transform=None):
+        self.Train = train
+        self.root_dir = root
         self.transform = transform
-        self.val_labels = val_labels
+        self.train_dir = os.path.join(self.root_dir, "train")
+        self.val_dir = os.path.join(self.root_dir, "val")
 
-    def __getitem__(self, index):
-        label = []
-        image = []
-        if self.type == 'train':
-            label = index // 500
-            image = self.images[index]
-        if self.type == 'val':
-            label = self.val_labels[index]
-            image = self.val_images[index]
-        return self.transform(image), label
+        if (self.Train):
+            self._create_class_idx_dict_train()
+        else:
+            self._create_class_idx_dict_val()
+
+        self._make_dataset(self.Train)
+
+        words_file = os.path.join(self.root_dir, "words.txt")
+        wnids_file = os.path.join(self.root_dir, "wnids.txt")
+
+        self.set_nids = set()
+
+        with open(wnids_file, 'r') as fo:
+            data = fo.readlines()
+            for entry in data:
+                self.set_nids.add(entry.strip("\n"))
+
+        self.class_to_label = {}
+        with open(words_file, 'r') as fo:
+            data = fo.readlines()
+            for entry in data:
+                words = entry.split("\t")
+                if words[0] in self.set_nids:
+                    self.class_to_label[words[0]] = (words[1].strip("\n").split(","))[0]
+
+    def _create_class_idx_dict_train(self):
+        if sys.version_info >= (3, 5):
+            classes = [d.name for d in os.scandir(self.train_dir) if d.is_dir()]
+        else:
+            classes = [d for d in os.listdir(self.train_dir) if os.path.isdir(os.path.join(self.train_dir, d))]
+        classes = sorted(classes)
+        num_images = 0
+        for root, dirs, files in os.walk(self.train_dir):
+            for f in files:
+                if f.endswith(".JPEG"):
+                    num_images = num_images + 1
+
+        self.len_dataset = num_images;
+
+        self.tgt_idx_to_class = {i: classes[i] for i in range(len(classes))}
+        self.class_to_tgt_idx = {classes[i]: i for i in range(len(classes))}
+
+    def _create_class_idx_dict_val(self):
+        val_image_dir = os.path.join(self.val_dir, "images")
+        if sys.version_info >= (3, 5):
+            images = [d.name for d in os.scandir(val_image_dir) if d.is_file()]
+        else:
+            images = [d for d in os.listdir(val_image_dir) if os.path.isfile(os.path.join(self.train_dir, d))]
+        val_annotations_file = os.path.join(self.val_dir, "val_annotations.txt")
+        self.val_img_to_class = {}
+        set_of_classes = set()
+        with open(val_annotations_file, 'r') as fo:
+            entry = fo.readlines()
+            for data in entry:
+                words = data.split("\t")
+                self.val_img_to_class[words[0]] = words[1]
+                set_of_classes.add(words[1])
+
+        self.len_dataset = len(list(self.val_img_to_class.keys()))
+        classes = sorted(list(set_of_classes))
+        # self.idx_to_class = {i:self.val_img_to_class[images[i]] for i in range(len(images))}
+        self.class_to_tgt_idx = {classes[i]: i for i in range(len(classes))}
+        self.tgt_idx_to_class = {i: classes[i] for i in range(len(classes))}
+
+    def _make_dataset(self, Train=True):
+        self.images = []
+        if Train:
+            img_root_dir = self.train_dir
+            list_of_dirs = [target for target in self.class_to_tgt_idx.keys()]
+        else:
+            img_root_dir = self.val_dir
+            list_of_dirs = ["images"]
+
+        for tgt in list_of_dirs:
+            dirs = os.path.join(img_root_dir, tgt)
+            if not os.path.isdir(dirs):
+                continue
+
+            for root, _, files in sorted(os.walk(dirs)):
+                for fname in sorted(files):
+                    if (fname.endswith(".JPEG")):
+                        path = os.path.join(root, fname)
+                        if Train:
+                            item = (path, self.class_to_tgt_idx[tgt])
+                        else:
+                            item = (path, self.class_to_tgt_idx[self.val_img_to_class[fname]])
+                        self.images.append(item)
+
+    def return_label(self, idx):
+        return [self.class_to_label[self.tgt_idx_to_class[i.item()]] for i in idx]
 
     def __len__(self):
-        len = 0
-        if self.type == 'train':
-            len = self.images.shape[0]
-        if self.type == 'val':
-            len = self.val_images.shape[0]
-        return len
+        return self.len_dataset
 
+    def __getitem__(self, idx):
+        img_path, tgt = self.images[idx]
+        with open(img_path, 'rb') as f:
+            sample = Image.open(img_path)
+            sample = sample.convert('RGB')
+        if self.transform is not None:
+            sample = self.transform(sample)
 
-def get_tiny(args):
-    labels_t = []
-    image_names = []
-    with open(os.path.join(args.root_path, 'data/tiny-imagenet-200/wnids.txt')) as wnid:
-        for line in wnid:
-            labels_t.append(line.strip('\n'))
-    for label in labels_t:
-        txt_path = os.path.join(args.root_path, 'data/tiny-imagenet-200/train/', label, f'{label}_boxes.txt')
-        image_name = []
-        with open(txt_path) as txt:
-            for line in txt:
-                image_name.append(line.strip('\n').split('\t')[0])
-        image_names.append(image_name)
-    labels = np.arange(200)
-    val_labels_t = []
-    val_labels = []
-    val_names = []
-    with open(os.path.join(args.root_path, 'data/tiny-imagenet-200/val/val_annotations.txt')) as txt:
-        for line in txt:
-            val_names.append(line.strip('\n').split('\t')[0])
-            val_labels_t.append(line.strip('\n').split('\t')[1])
-    for i in range(len(val_labels_t)):
-        for i_t in range(len(labels_t)):
-            if val_labels_t[i] == labels_t[i_t]:
-                val_labels.append(i_t)
-    val_labels = np.array(val_labels)
+        return sample, tgt
 
-    transform_train = transforms.Compose([transforms.ToPILImage(),
-                                          transforms.RandomCrop(64, padding=4),
-                                          transforms.RandomHorizontalFlip(),
-                                          transforms.Resize(224),
-                                          transforms.ToTensor()
-    ])
-
-    transform_test = transforms.Compose([transforms.ToTensor(),
-                                         transforms.Resize(224)])
-
-    train_dataset = data(args, 'train', transform=transform_train, labels_t=labels_t, image_names=image_names,
-                         val_names=val_names, val_labels=val_labels)
-    val_dataset = data(args, 'val', transform=transform_test, labels_t=labels_t, image_names=image_names,
-                       val_names=val_names, val_labels=val_labels)
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True,
-                                  num_workers=args.num_worker)
-    val_dataloader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, pin_memory=True,
-                                num_workers=args.num_worker)
-    return train_dataloader, val_dataloader
 

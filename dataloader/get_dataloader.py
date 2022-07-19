@@ -22,6 +22,8 @@ def get_dataloader(args):
         image_size = 32
     elif args.dataset == 'tinyimagenet':
         image_size = 64
+    else:
+        raise NotImplemented
 
     # dataset transforms
     transform_test = transforms.Compose([
@@ -63,31 +65,24 @@ def get_dataloader(args):
                                                           train=False, transform=transform_test, download=True)
             valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
                                       num_workers=args.num_works, pin_memory=True)
-        elif args.dataset == 'svhn':
-            train_dataset = torchvision.datasets.SVHN(os.path.join(args.root_path, args.data_root),
-                                                      split='train', transform=transform_train, download=True)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_works, pin_memory=True)
-            valid_dataset = torchvision.datasets.SVHN(os.path.join(args.root_path, args.data_root),
-                                                      split='test', transform=transform_test, download=True)
-            valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
-                                      num_workers=args.num_works, pin_memory=True)
         elif args.dataset == 'tinyimagenet':
+            from dataloader.tiny_imagenet import TinyImageNet
             if not os.path.exists(os.path.join(args.root_path, args.data_root, 'tiny-imagenet-200')):
                 download_tinyimagenet(args)
 
-            train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(args.root_path,
-                                                                               args.data_root,
-                                                                               'tiny-imagenet-200',
-                                                                               'train'),
-                                                             transform=transform_train)
+            train_dataset = TinyImageNet(root=os.path.join(args.root_path,
+                                                           args.data_root,
+                                                           'tiny-imagenet-200',
+                                                           'train'),
+                                         train=True, transform=transform_train)
             train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                        num_workers=args.num_works, pin_memory=True)
-            valid_dataset = torchvision.datasets.ImageFolder(root=os.path.join(args.root_path,
-                                                                               args.data_root,
-                                                                               'tiny-imagenet-200',
-                                                                               'val'),
-                                                             transform=transform_test)
+
+            valid_dataset = TinyImageNet(root=os.path.join(args.root_path,
+                                                           args.data_root,
+                                                           'tiny-imagenet-200',
+                                                           'train'),
+                                         train=False, transform=transform_test)
             valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
                                                        num_workers=args.num_works, pin_memory=True)
         else:
