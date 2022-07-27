@@ -11,12 +11,13 @@ from utils.utils import *
 
 from train.train_base import Trainer_base
 
+from adv_lib.trades_lib import *
 from adv_lib.mart_lib import *
 
 
-class Trainer_Mart(Trainer_base):
+class Trainer_Mart_Trades(Trainer_base):
     def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Mart, self).__init__(args, writer, attack_name, device, loss_function)
+        super(Trainer_Mart_Trades, self).__init__(args, writer, attack_name, device, loss_function)
 
     def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
@@ -38,7 +39,13 @@ class Trainer_Mart(Trainer_base):
                                                           step_size=self.args.alpha, epsilon=self.args.epsilon,
                                                           perturb_steps=self.args.iters, beta=self.args.mart_beta,
                                                           distance='l_inf')
-                loss = loss_adv + loss_mart
+                # TRADES Loss
+                loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label, optimizer=opt,
+                                                              step_size=self.args.alpha, epsilon=self.args.epsilon,
+                                                              perturb_steps=self.args.iters, beta=self.args.trades_beta,
+                                                              distance='l_inf')
+
+                loss = loss_adv + loss_mart + loss_trades
 
                 opt.zero_grad()
                 loss.backward()
@@ -58,13 +65,16 @@ class Trainer_Mart(Trainer_base):
                     adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
                     print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
-                          f'standard acc: {std_acc:.3f}%    robustness acc: {adv_acc:.3f}%\n'
-                          f'loss_adv:{loss_adv.item():.3f}  loss_mart:{loss_mart.item():.3f}\n')
+                          f'standard acc: {std_acc:.3f}%\trobustness acc: {adv_acc:.3f}%\n'
+                          f'loss_adv:{loss_adv.item():.3f}\tloss_mart:{loss_mart.item():.3f}\t'
+                          f'loss_trades:{loss_trades.item():.3f}\n')
 
                     if self.writer is not None:
                         self.writer.add_scalar('Train/Loss_adv', loss_adv.item(),
                                                epoch * len(train_loader) + idx)
                         self.writer.add_scalar('Train/Loss_mart', loss_mart.item(),
+                                               epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Loss_trades', loss_trades.item(),
                                                epoch * len(train_loader) + idx)
                         self.writer.add_scalar('Train/Nature_Accuracy', std_acc,
                                                epoch * len(train_loader) + idx)

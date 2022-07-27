@@ -25,7 +25,7 @@ def get_exp_name(args):
     curr_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
     # model name
-    if args.model_name == 'wrn34-10':
+    if args.model_name == 'wrn3410':
         model_name = 'wrn3410'
     elif args.model_name == 'resnet18':
         model_name = 'resnet18'
@@ -40,9 +40,12 @@ def get_exp_name(args):
     if args.at_method == 'standard':
         exp_name = f'Standard_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'trades':
-        exp_name = f'TRADES_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'mart':
-        exp_name = f'MART_{args.beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'MART_{args.mart_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'mart_trades':
+        exp_name = f'MART_{args.mart_beta}_TRADES_{args.trades_beta}_{args.dataset}_{model_name}_' \
+                   f'{args.learning_rate}_{curr_time}'
     elif args.at_method == 'ccg':
         exp_name = f'CCG_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     else:

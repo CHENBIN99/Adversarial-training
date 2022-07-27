@@ -47,7 +47,7 @@ def main(args):
     else:
         raise 'no match dataset'
 
-    if args.model_name == 'wrn34-10':
+    if args.model_name == 'wrn3410':
         model = wideresnet.WideResNet(depth=34,
                                       widen_factor=10,
                                       num_classes=num_classes,
@@ -77,6 +77,9 @@ def main(args):
     elif args.at_method == 'mart':
         from train.train_mart import Trainer_Mart
         trainer = Trainer_Mart(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'mart_trades':
+        from train.train_mart_trades import Trainer_Mart_Trades
+        trainer = Trainer_Mart_Trades(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'ccg':
         from train.train_ccg import Trainer_CCG
         trainer = Trainer_CCG(args, tb_writer, args.attack_method, device)

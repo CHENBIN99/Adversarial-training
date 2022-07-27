@@ -62,22 +62,23 @@ def parser():
     parser.add_argument('--log_time', action='store_true')
 
     # model
-    parser.add_argument('--model_name', type=str, default='wrn34-10',
-                        choices=['wrn34-10', 'resnet18', 'resnet50', 'preactresnet18'])
+    parser.add_argument('--model_name', type=str, default='wrn34-10')
     parser.add_argument('--depth', type=int, default=34)
     parser.add_argument('--widen_factor', type=int, default=10)
     parser.add_argument('--num_classes', type=int, default=10)
 
     # TRADES
-    parser.add_argument('--beta', type=float, default=6.0)
+    parser.add_argument('--trades_beta', type=float, default=6.0)
+
+    # MART
+    parser.add_argument('--mart_beta', type=float, default=6.0)
 
     # CCG
     parser.add_argument('--lamda', type=float, default=1.0)
     parser.add_argument('--T', type=float, default=1.)
 
     # Choose at method
-    parser.add_argument('--at_method', type=str, default='standard',
-                        choices=['standard', 'trades', 'mart', 'ccg'])
+    parser.add_argument('--at_method', type=str, default='standard')
 
     return parser.parse_args()
 

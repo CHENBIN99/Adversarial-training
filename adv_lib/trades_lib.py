@@ -2,72 +2,76 @@
 import torch
 import torch.nn.functional as F
 
-
-def kl_div(input, targets, reduction='batchmean'):
-    return F.kl_div(F.log_softmax(input, dim=1), F.softmax(targets, dim=1),
-                    reduction=reduction)
-
-
-def _batch_l2norm(x):
-    x_flat = x.view(x.size(0), -1)
-    return torch.norm(x_flat, dim=1)
+import torch.nn as nn
+import torch.optim as optim
+from torch.autograd import Variable
 
 
-def generate_trades(model, x_natural, distance='Linf',
-                    eps=0.031, eps_iter=0.003, nb_iter=10,
-                    clip_min=0., clip_max=1.):
-    is_training = model.training
+def trades_loss(model,
+                x_natural,
+                y,
+                optimizer,
+                step_size=0.003,
+                epsilon=0.031,
+                perturb_steps=10,
+                beta=1.0,
+                distance='l_inf'):
+    # define KL-loss
+    criterion_kl = nn.KLDivLoss(size_average=False)
     model.eval()
-
+    batch_size = len(x_natural)
     # generate adversarial example
-    x_adv = x_natural + 0.001 * torch.randn_like(x_natural)
-    x_adv = x_adv.detach()
-
-    outputs_natural = model(x_natural).detach()
-
-    if distance == 'Linf':
-        for _ in range(nb_iter):
+    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    if distance == 'l_inf':
+        for _ in range(perturb_steps):
             x_adv.requires_grad_()
-            loss_kl = kl_div(model(x_adv), outputs_natural, reduction='sum')
+            with torch.enable_grad():
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                       F.softmax(model(x_natural), dim=1))
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
-            x_adv = x_adv.detach() + eps_iter * torch.sign(grad.detach())
-            x_adv = torch.min(torch.max(x_adv, x_natural - eps), x_natural + eps)
-            x_adv = torch.clamp(x_adv, clip_min, clip_max)
-    elif distance == 'L2':
-        for _ in range(nb_iter):
-            x_adv.requires_grad_()
-            loss_kl = kl_div(model(x_adv), outputs_natural, reduction='sum')
-            grad = torch.autograd.grad(loss_kl, [x_adv])[0]
-            grad_norm = _batch_l2norm(grad).view(-1, 1, 1, 1)
-            grad = grad / (grad_norm + 1e-8)
+            x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
+            x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    elif distance == 'l_2':
+        delta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
+        delta = Variable(delta.data, requires_grad=True)
 
-            x_adv = x_adv.detach() + eps_iter * grad
-            eta_x_adv = x_adv - x_natural
-            eta_x_adv = eta_x_adv.renorm(p=2, dim=0, maxnorm=eps)
+        # Setup optimizers
+        optimizer_delta = optim.SGD([delta], lr=epsilon / perturb_steps * 2)
 
-            x_adv = x_natural + eta_x_adv
-            x_adv = torch.clamp(x_adv, clip_min, clip_max)
+        for _ in range(perturb_steps):
+            adv = x_natural + delta
+
+            # optimize
+            optimizer_delta.zero_grad()
+            with torch.enable_grad():
+                loss = (-1) * criterion_kl(F.log_softmax(model(adv), dim=1),
+                                           F.softmax(model(x_natural), dim=1))
+            loss.backward()
+            # renorming gradient
+            grad_norms = delta.grad.view(batch_size, -1).norm(p=2, dim=1)
+            delta.grad.div_(grad_norms.view(-1, 1, 1, 1))
+            # avoid nan or inf if gradient is 0
+            if (grad_norms == 0).any():
+                delta.grad[grad_norms == 0] = torch.randn_like(delta.grad[grad_norms == 0])
+            optimizer_delta.step()
+
+            # projection
+            delta.data.add_(x_natural)
+            delta.data.clamp_(0, 1).sub_(x_natural)
+            delta.data.renorm_(p=2, dim=0, maxnorm=epsilon)
+        x_adv = Variable(x_natural + delta, requires_grad=False)
     else:
-        raise NotImplementedError()
+        x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    model.train()
 
-    model.train(is_training)
-    x_adv = x_adv.detach()
-
-    return x_adv
-
-
-def trades_loss(model, x_natural, y, distance='Linf',
-                eps_iter=0.003, eps=0.031, nb_iter=10, beta=1.0,
-                clip_min=0.0, clip_max=1.0):
+    x_adv = Variable(torch.clamp(x_adv, 0.0, 1.0), requires_grad=False)
+    # zero gradient
+    optimizer.zero_grad()
     # calculate robust loss
     logits = model(x_natural)
     loss_natural = F.cross_entropy(logits, y)
-    if beta == 0:
-        return loss_natural, 0
+    loss_robust = (1.0 / batch_size) * criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                                    F.softmax(model(x_natural), dim=1))
 
-    x_adv = generate_trades(model, x_natural, distance=distance,
-                            eps=eps, eps_iter=eps_iter, nb_iter=nb_iter,
-                            clip_min=clip_min, clip_max=clip_max)
-    loss_robust = kl_div(model(x_adv), model(x_natural))
-
-    return loss_natural, beta * loss_robust
+    return loss_natural, beta * loss_robust, x_adv
