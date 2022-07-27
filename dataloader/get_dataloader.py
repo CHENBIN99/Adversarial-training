@@ -120,7 +120,7 @@ def get_dataloader(args):
                                                            download=True)
             valid_dataset = torchvision.datasets.CIFAR10(os.path.join(args.root_path, args.data_root),
                                                          train=True,
-                                                         transform=transform_train_1,
+                                                         transform=transform_test,
                                                          download=True)
 
             train_dataloader_1 = torch.utils.data.DataLoader(train_dataset_1, batch_size=args.batch_size, shuffle=True,
@@ -151,8 +151,8 @@ def get_dataloader(args):
                                                             download=True)
             valid_dataset = torchvision.datasets.CIFAR100(os.path.join(args.root_path, args.data_root),
                                                           train=True,
-                                                          transform=transform_train_1,
-                                                          ownload=True)
+                                                          transform=transform_test,
+                                                          download=True)
             train_dataloader_1 = torch.utils.data.DataLoader(train_dataset_1, batch_size=args.batch_size, shuffle=True,
                                                              num_workers=args.num_works, pin_memory=True)
             train_dataloader_2 = torch.utils.data.DataLoader(train_dataset_2, batch_size=args.batch_size, shuffle=True,
@@ -180,7 +180,7 @@ def get_dataloader(args):
             train_dataset_2 = TinyImageNet(root=os.path.join(args.root_path, args.data_root, 'tiny-imagenet-200'),
                                            train=True, transform=MultiDataTransform(transform_train_2))
             valid_dataset = TinyImageNet(root=os.path.join(args.root_path, args.data_root, 'tiny-imagenet-200'),
-                                           train=False, transform=MultiDataTransform(transform_train_1))
+                                           train=False, transform=transform_test)
 
             train_dataloader_1 = torch.utils.data.DataLoader(train_dataset_1, batch_size=args.batch_size, shuffle=True,
                                                          num_workers=args.num_works, pin_memory=True)
