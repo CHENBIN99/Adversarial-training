@@ -29,7 +29,7 @@ def get_dataloader(args):
     transform_test = transforms.Compose([
         transforms.ToTensor(),
     ])
-    if args.at_method != 'ccg':
+    if 'ccg' not in args.at_method:
         transform_train = transforms.Compose([
             transforms.ToTensor(),
             transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),

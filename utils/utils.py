@@ -48,6 +48,8 @@ def get_exp_name(args):
                    f'{args.learning_rate}_{curr_time}'
     elif args.at_method == 'ccg':
         exp_name = f'CCG_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'ccg_trades':
+        exp_name = f'CCG_TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     else:
         raise 'no match at method'
 

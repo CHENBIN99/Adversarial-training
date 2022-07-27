@@ -83,6 +83,9 @@ def main(args):
     elif args.at_method == 'ccg':
         from train.train_ccg import Trainer_CCG
         trainer = Trainer_CCG(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'ccg_trades':
+        from train.train_ccg_trades import Trainer_CCG_TRADES
+        trainer = Trainer_CCG_TRADES(args, tb_writer, args.attack_method, device)
     else:
         raise 'no match at_method'
 
