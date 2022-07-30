@@ -53,11 +53,11 @@ def parser():
     parser.add_argument('--gpu_id', '-g', default='0', help='which gpu to use')
     parser.add_argument('--multi-gpu', action="store_true",
                         help='use if machine have muti-gpu')
-    parser.add_argument('--ms_1', type=float, default=0.75,
+    parser.add_argument('--ms_1', type=float, default=0.5,
                         help='mile stone 1 of learning schedule')
-    parser.add_argument('--ms_2', type=float, default=0.9,
+    parser.add_argument('--ms_2', type=float, default=0.75,
                         help='mile stone 2 of learning schedule')
-    parser.add_argument('--ms_3', type=float, default=0.95,
+    parser.add_argument('--ms_3', type=float, default=0.9,
                         help='mile stone 3 of learning schedule')
     parser.add_argument('--log_time', action='store_true')
 
