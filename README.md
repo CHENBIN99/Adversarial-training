@@ -7,9 +7,9 @@
 
 The option for the training method is as follow:
 
-> + <at_method> : {standard, trades, mart, ccg}
-> + <dataset> : {cifar10, cifar100, tinyimagent}
-> + <model> : {wrn34-10, resnet18, resnet50, preactresnet18}
+> + < at_method > : {standard, trades, mart, ccg}
+> + < dataset > : {cifar10, cifar100, tinyimagent}
+> + < model > : {wrn34-10, resnet18, resnet50, preactresnet18}
 
 
 
@@ -17,9 +17,9 @@ The option for the training method is as follow:
 
 + Standard Adversarial Training
 
-  > \# standard adversarial training on cifar10 using Wide-ResNet50
+  > \# standard adversarial training on cifar10 using Wide-ResNet34-10
   >
-  > `python main.py --at_method standard --model_name wrn34-10 --dataset cifar10 --tensorboard`
+  > `python main.py --at_method standard --model_name wrn3410 --dataset cifar10 --tensorboard`
 
 + Trades
 
@@ -27,10 +27,10 @@ The option for the training method is as follow:
 
   > \# Trades with beta 6.0
   >
-  > `python main.py --at_method trades --beta 6.0 --model_name wrn34-10 --dataset cifar10 --tensorboard`
+  > `python main.py --at_method trades --beta 6.0 --model_name wrn3410 --dataset cifar10 --tensorboard`
 
 + Mart
 
   > \# Mart with beta 6.0
   >
-  > `python main.py --at_method mart --beta 6.0 --model_name wrn34-10 --dataset cifar10 --tensorboard`
+  > `python main.py --at_method mart --beta 6.0 --model_name wrn3410 --dataset cifar10 --tensorboard`
