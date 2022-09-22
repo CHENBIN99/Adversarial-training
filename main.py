@@ -58,7 +58,7 @@ def main(args):
         model.fc = torch.nn.Linear(512, num_classes)
         model.to(device)
     elif args.model_name == 'resnet50':
-        model = torchvision.models.resnet50(pretrained=True)
+        model = torchvision.models.resnet50(pretrained=False)
         model.fc = torch.nn.Linear(2048, num_classes)
         model.to(device)
     elif args.model_name == 'preactresnet18':
