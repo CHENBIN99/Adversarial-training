@@ -68,7 +68,10 @@ def main(args):
         raise 'no match model'
 
     # choose adversarial training method
-    if args.at_method == 'standard':
+    if args.at_method == 'nature':
+        from train.train_nature import Trainer_Nature
+        trainer = Trainer_Nature(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'standard':
         from train.train_standard import Trainer_Standard
         trainer = Trainer_Standard(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'trades':

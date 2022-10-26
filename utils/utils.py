@@ -37,7 +37,9 @@ def get_exp_name(args):
         raise 'no match model'
 
     # attack method
-    if args.at_method == 'standard':
+    if args.at_method == 'nature':
+        exp_name = f'Nature_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'standard':
         exp_name = f'Standard_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'trades':
         exp_name = f'TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
