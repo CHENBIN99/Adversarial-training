@@ -9,7 +9,7 @@ The option for the training method is as follow:
 
 > + < at_method > : {standard, trades, mart, ccg}
 > + < dataset > : {cifar10, cifar100, tinyimagent}
-> + < model > : {wrn34-10, resnet18, resnet50, preactresnet18}
+> + < model > : {wrn34-10, resnet18, resnet50, preactresnet18, vit_s, deit_s}
 
 
 
