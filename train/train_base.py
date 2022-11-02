@@ -13,10 +13,12 @@ class Trainer_base:
         self.args = args
         self.writer = writer
         self.device = device
-
         self.attack_name = attack_name
-
         self.loss_fn = loss_function
+        # log
+        self.best_clean_acc = 0.
+        self.best_robust_acc = 0.
+
 
     def get_attack(self, model, epsilon, alpha, iters):
         if self.attack_name == 'pgd':
@@ -40,8 +42,11 @@ class Trainer_base:
         elif self.attack_name == 'fgsm':
             return 'FGSM'
 
-    def save_checkpoint(self, model, epoch):
-        file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
+    def save_checkpoint(self, model, epoch, is_best=False):
+        if not is_best:
+            file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
+        else:
+            file_name = os.path.join(self.args.model_folder, f'checkpoint_best.pth')
         torch.save(model.state_dict(), file_name)
 
     def train(self, **kwargs):

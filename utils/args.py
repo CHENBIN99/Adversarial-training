@@ -45,7 +45,7 @@ def parser():
     parser.add_argument('--num_works', type=int, default=4, help='numbers of the workers')
     parser.add_argument('--n_eval_step', type=int, default=10,
                         help='number of iteration per one evaluation')
-    parser.add_argument('--n_checkpoint_step', type=int, default=1,
+    parser.add_argument('--n_checkpoint_step', type=int, default=-1,
                         help='number of iteration to save a checkpoint')
     parser.add_argument('--n_store_image_step', type=int, default=4000,
                         help='number of iteration to save adversaries')

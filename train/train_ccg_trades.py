@@ -97,18 +97,24 @@ class Trainer_CCG_TRADES(Trainer_base):
                                                epoch * len(train_loader) + idx)
                 _iter += 1
 
-            if epoch % self.args.n_checkpoint_step == 0:
-                self.save_checkpoint(model, epoch)
-
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)
                 valid_acc, valid_adv_acc = valid_acc * 100, valid_adv_acc * 100
+                if valid_adv_acc >= self.best_robust_acc:
+                    self.best_clean_acc = valid_acc
+                    self.best_robust_acc = valid_adv_acc
+                    self.save_checkpoint(model, epoch, is_best=True)
+
                 print(f'[EVAL] [{epoch}]/[{self.args.max_epochs}]:\n'
-                      f'std_acc:{valid_acc}%  adv_acc:{valid_adv_acc}%\n')
+                      f'std_acc:{valid_acc}%  adv_acc:{valid_adv_acc}%\n'
+                      f'best_epoch:{epoch}\tbest_rob_acc:{self.best_robust_acc}\n')
 
                 if self.writer is not None:
                     self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
                     self.writer.add_scalar(f'Valid/{self.get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
+
+            if self.args.n_checkpoint_step != -1 and epoch % self.args.n_checkpoint_step == 0:
+                self.save_checkpoint(model, epoch)
 
             scheduler.step()
 
