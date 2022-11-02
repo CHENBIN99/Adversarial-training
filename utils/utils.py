@@ -33,6 +33,10 @@ def get_exp_name(args):
         model_name = 'resnet50'
     elif args.model_name == 'preactresnet18':
         model_name = 'preact18'
+    elif args.model_name == 'vit_s':
+        model_name = 'vit_small'
+    elif args.model_name == 'swin_s':
+        model_name = 'swin_small'
     else:
         raise 'no match model'
 

@@ -10,6 +10,7 @@ from model import wideresnet, preactresnet
 from utils.args import parser
 from utils.utils import *
 from dataloader import get_dataloader
+import timm
 
 
 def main(args):
@@ -63,6 +64,14 @@ def main(args):
         model.to(device)
     elif args.model_name == 'preactresnet18':
         model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if args.dataset != 'tinyimagenet' else 2)
+        model.to(device)
+    elif args.model_name == 'vit_s':
+        # load vit-small
+        model = timm.create_model('vit_small_patch16_224', num_classes=num_classes)
+        model.to(device)
+    elif args.model_name == 'swin_s':
+        # load swin-small
+        model = timm.create_model('swin_small_patch4_window7_224', num_classes=num_classes)
         model.to(device)
     else:
         raise 'no match model'

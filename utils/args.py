@@ -40,6 +40,7 @@ def parser():
     parser.add_argument('--weight_decay', '-w', type=float, default=2e-4,
                         help='the parameter of l2 restriction for weights')
     parser.add_argument('--dataset', type=str, default='cifar10', help='training dataset')
+    parser.add_argument('--image_size', type=int, default=-1, help='resize the image in dataset')
     parser.add_argument('--max_epochs', type=int, default=100, help='total epochs need to run')
     parser.add_argument('--num_works', type=int, default=4, help='numbers of the workers')
     parser.add_argument('--n_eval_step', type=int, default=10,

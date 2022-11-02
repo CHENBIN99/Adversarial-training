@@ -19,9 +19,15 @@ class MultiDataTransform(object):
 def get_dataloader(args):
     # image size
     if args.dataset == 'cifar10' or args.dataset == 'cifar100' or args.dataset == 'svhn':
-        image_size = 32
+        if args.image_size == -1:
+            image_size = 32
+        else:
+            image_size = args.image_size
     elif args.dataset == 'tinyimagenet':
-        image_size = 64
+        if args.image_size == -1:
+            image_size = 64
+        else:
+            image_size = args.image_size
     else:
         raise NotImplemented
 
@@ -32,6 +38,7 @@ def get_dataloader(args):
     if 'ccg' not in args.at_method:
         transform_train = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Resize(image_size),
             transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                               (4, 4, 4, 4), mode='reflect').squeeze()),
             transforms.ToPILImage(),
@@ -91,6 +98,7 @@ def get_dataloader(args):
     else:
         transform_train_1 = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Resize(image_size),
             transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                               (4, 4, 4, 4), mode='reflect').squeeze()),
             transforms.ToPILImage(),
@@ -102,6 +110,7 @@ def get_dataloader(args):
         if args.dataset == 'cifar10':
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
+                transforms.Resize(image_size),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
@@ -133,6 +142,7 @@ def get_dataloader(args):
         elif args.dataset == 'cifar100':
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
+                transforms.Resize(image_size),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
@@ -166,6 +176,7 @@ def get_dataloader(args):
 
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
+                transforms.Resize(image_size),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
