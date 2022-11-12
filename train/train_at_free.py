@@ -28,7 +28,7 @@ class Trainer_Free(Trainer_base):
                                                                      int(self.args.max_epochs * self.args.ms_2),
                                                                      int(self.args.max_epochs * self.args.ms_3)],
                                                          gamma=0.1)
-        _iter = 0
+        _iter = 1
 
         delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
 
@@ -74,13 +74,13 @@ class Trainer_Free(Trainer_base):
 
                         if self.writer is not None:
                             self.writer.add_scalar('Train/Loss', loss.item(),
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Clean_acc', std_acc,
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                     _iter += 1
 
             if valid_loader is not None:
