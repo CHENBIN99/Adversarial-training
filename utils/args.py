@@ -68,6 +68,9 @@ def parser():
     parser.add_argument('--widen_factor', type=int, default=10)
     parser.add_argument('--num_classes', type=int, default=10)
 
+    # free
+    parser.add_argument('--m', type=int, default=10)
+
     # TRADES
     parser.add_argument('--trades_beta', type=float, default=6.0)
 

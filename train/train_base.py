@@ -4,6 +4,7 @@
 
 import torchattacks
 import torch
+from tqdm import tqdm
 
 from utils.utils import *
 
@@ -53,36 +54,41 @@ class Trainer_base:
         pass
 
     def valid(self, model, valid_loader, use_pseudo_label=False):
-        total_acc = 0.
+        total_correct_nat = 0
+        total_correct_adv = 0
+        total_acc_nat = 0.
+        total_acc_adv = 0.
         num = 0
-        total_adv_acc = 0.
 
         attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
 
         model.eval()
 
         with torch.no_grad():
-            for idx, (data, label) in enumerate(valid_loader):
-                data, label = data.to(self.device), label.to(self.device)
+            with tqdm(total=len(valid_loader)) as _tqdm:
+                _tqdm.set_description('Validating:')
+                for idx, (data, label) in enumerate(valid_loader):
+                    data, label = data.to(self.device), label.to(self.device)
+                    output = model(data)
+                    pred = torch.max(output, dim=1)[1]
+                    std_acc_num = evaluate(pred.cpu().numpy(), label.cpu().numpy(), 'sum')
 
-                output = model(data)
+                    with torch.enable_grad():
+                        adv_data = attack_method(data, pred if use_pseudo_label else label)
+                    adv_output = model(adv_data)
+                    adv_pred = torch.max(adv_output, dim=1)[1]
+                    adv_acc_num = evaluate(adv_pred.cpu().numpy(), label.cpu().numpy(), 'sum')
 
-                pred = torch.max(output, dim=1)[1]
-                std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy(), 'sum')
+                    total_correct_nat += std_acc_num
+                    total_correct_adv += adv_acc_num
+                    num += output.shape[0]
+                    total_acc_nat = total_correct_nat / num
+                    total_acc_adv = total_correct_adv / num
 
-                total_acc += std_acc
-                num += output.shape[0]
-
-                with torch.enable_grad():
-                    adv_data = attack_method(data,
-                                             pred if use_pseudo_label else label)
-                adv_output = model(adv_data)
-
-                adv_pred = torch.max(adv_output, dim=1)[1]
-                adv_acc = evaluate(adv_pred.cpu().numpy(), label.cpu().numpy(), 'sum')
-                total_adv_acc += adv_acc
+                    _tqdm.set_postfix(nat_acc='{:.3f}'.format(total_acc_nat), rob_acc='{:.3f}'.format(total_acc_adv))
+                    _tqdm.update(1)
 
         model.train()
 
-        return total_acc / num, total_adv_acc / num
+        return total_acc_nat, total_acc_adv
 

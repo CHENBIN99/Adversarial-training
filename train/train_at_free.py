@@ -1,8 +1,11 @@
 """
-Standard Adversarial Training
+Adversarial for free!
+https://arxiv.org/abs/1904.12843
 """
 import os
 import sys
+
+import torch
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -11,9 +14,10 @@ from utils.utils import *
 from train.train_base import Trainer_base
 
 
-class Trainer_Standard(Trainer_base):
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Standard, self).__init__(args, writer, attack_name, device, loss_function)
+class Trainer_Free(Trainer_base):
+    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss(), m=10):
+        super().__init__(args=args, writer=writer, attack_name=attack_name, device=device, loss_function=loss_function)
+        self.m = m
 
     def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
@@ -24,24 +28,30 @@ class Trainer_Standard(Trainer_base):
                                                                      int(self.args.max_epochs * self.args.ms_2),
                                                                      int(self.args.max_epochs * self.args.ms_3)],
                                                          gamma=0.1)
-        _iter = 1
+        _iter = 0
+
+        delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
+
         for epoch in range(0, self.args.max_epochs):
             # train_file
             with tqdm(total=len(train_loader)) as _tqdm:
                 _tqdm.set_description('epoch:{}/{} Training:'.format(epoch+1, self.args.max_epochs))
                 for idx, (data, label) in enumerate(train_loader):
                     data, label = data.to(self.device), label.to(self.device)
-                    attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
+                    for i in range(self.m):
+                        opt.zero_grad()
+                        adv_data = (data + delta).detach()
+                        adv_data.requires_grad_()
+                        adv_output = model(adv_data)
 
-                    adv_data = attack_method(data, label)
-                    adv_output = model(adv_data)
+                        # Loss
+                        loss = self.loss_fn(adv_output, label)
 
-                    # Loss
-                    loss = self.loss_fn(adv_output, label)
-
-                    opt.zero_grad()
-                    loss.backward()
-                    opt.step()
+                        loss.backward()
+                        opt.step()
+                        grad = adv_data.grad.data
+                        delta = delta.detach() + self.args.epsilon * torch.sign(grad.detach())
+                        delta = torch.clamp(delta, -self.args.epsilon, self.args.epsilon)
 
                     if _iter % self.args.n_eval_step == 0:
                         # clean data

@@ -36,10 +36,12 @@ def get_dataloader(args):
     else:
         raise NotImplemented
 
+    setattr(args, 'image_size', image_size)
+
     # dataset transforms
     transform_test = transforms.Compose([
+        transforms.Resize((image_size, image_size)),
         transforms.ToTensor(),
-        transforms.Resize(image_size),
     ])
     if 'ccg' not in args.at_method:
         transform_train = transforms.Compose([

@@ -91,6 +91,9 @@ def main(args):
     elif args.at_method == 'standard':
         from train.train_standard import Trainer_Standard
         trainer = Trainer_Standard(args, tb_writer, args.attack_method, device)
+    elif args.at_method == 'at_free':
+        from train.train_at_free import Trainer_Free
+        trainer = Trainer_Free(args, tb_writer, args.attack_method, device, m=args.m)
     elif args.at_method == 'trades':
         from train.train_trades import Trainer_Trades
         trainer = Trainer_Trades(args, tb_writer, args.attack_method, device)

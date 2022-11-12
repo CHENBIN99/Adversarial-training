@@ -32,6 +32,8 @@ def get_exp_name(args):
         exp_name = f'Nature_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'standard':
         exp_name = f'Standard_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+    elif args.at_method == 'at_free':
+        exp_name = f'AT-Free_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'trades':
         exp_name = f'TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
     elif args.at_method == 'mart':
