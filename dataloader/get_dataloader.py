@@ -1,7 +1,7 @@
 import torch.nn.functional as F
 import torchvision
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision import transforms, datasets
 from utils.utils import *
 from dataloader.autoaugment import *
 
@@ -28,12 +28,18 @@ def get_dataloader(args):
             image_size = 64
         else:
             image_size = args.image_size
+    elif args.dataset == 'imagenet':
+        if args.image_size == -1:
+            image_size = 224
+        else:
+            image_size = args.image_size
     else:
         raise NotImplemented
 
     # dataset transforms
     transform_test = transforms.Compose([
         transforms.ToTensor(),
+        transforms.Resize(image_size),
     ])
     if 'ccg' not in args.at_method:
         transform_train = transforms.Compose([
@@ -90,8 +96,17 @@ def get_dataloader(args):
                                          train=False, transform=transform_test)
             valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False,
                                                        num_workers=args.num_works, pin_memory=True)
+        elif args.dataset == 'imagenet':
+            train_dataset = datasets.ImageFolder(os.path.join(args.root_path, args.data_root, 'ImageNet', 'train'),
+                                                 transform_train)
+            train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                                           num_workers=args.num_works, pin_memory=True)
+            valid_dataset = datasets.ImageFolder(os.path.join(args.root_path, args.data_root, 'ImageNet', 'val/'),
+                                                 transform_test)
+            valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True,
+                                                           num_workers=args.num_works, pin_memory=True)
         else:
-            raise 'no match dataset'
+            raise NotImplemented
 
         return train_loader, valid_loader
 

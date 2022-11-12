@@ -68,7 +68,7 @@ class Trainer_Nature(Trainer_base):
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)
                 valid_acc, valid_adv_acc = valid_acc * 100, valid_adv_acc * 100
-                if valid_adv_acc >= self.best_robust_acc:
+                if valid_acc >= self.best_clean_acc:
                     self.best_clean_acc = valid_acc
                     self.best_robust_acc = valid_adv_acc
                     self.save_checkpoint(model, epoch, is_best=True)

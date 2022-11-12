@@ -25,20 +25,7 @@ def get_exp_name(args):
     curr_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
     # model name
-    if args.model_name == 'wrn3410':
-        model_name = 'wrn3410'
-    elif args.model_name == 'resnet18':
-        model_name = 'resnet18'
-    elif args.model_name == 'resnet50':
-        model_name = 'resnet50'
-    elif args.model_name == 'preactresnet18':
-        model_name = 'preact18'
-    elif args.model_name == 'vit_s':
-        model_name = 'vit_small'
-    elif args.model_name == 'swin_s':
-        model_name = 'swin_small'
-    else:
-        raise 'no match model'
+    model_name = args.model_name
 
     # attack method
     if args.at_method == 'nature':

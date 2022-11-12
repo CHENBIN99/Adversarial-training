@@ -1,5 +1,9 @@
 import sys
 import os
+
+import timm
+import torch.nn
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -10,7 +14,6 @@ from model import wideresnet, preactresnet
 from utils.args import parser
 from utils.utils import *
 from dataloader import get_dataloader
-import timm
 
 
 def main(args):
@@ -45,8 +48,12 @@ def main(args):
         num_classes = 100
     elif args.dataset == 'tinyimagenet':
         num_classes = 200
+    elif args.dataset == 'imagenet':
+        num_classes = 1000
     else:
         raise 'no match dataset'
+
+    train_dataloader, valid_dataloader = get_dataloader.get_dataloader(args)
 
     if args.model_name == 'wrn3410':
         model = wideresnet.WideResNet(depth=34,
@@ -65,13 +72,14 @@ def main(args):
     elif args.model_name == 'preactresnet18':
         model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if args.dataset != 'tinyimagenet' else 2)
         model.to(device)
-    elif args.model_name == 'vit_s':
-        # load vit-small
-        model = timm.create_model('vit_small_patch16_224', num_classes=num_classes)
+    elif args.model_name == 'inc_v2_224':
+        model = timm.create_model('inception_resnet_v2', pretrained=False)
         model.to(device)
-    elif args.model_name == 'swin_s':
-        # load swin-small
-        model = timm.create_model('swin_small_patch4_window7_224', num_classes=num_classes)
+    elif args.model_name == 'inc_v3_224':
+        model = timm.create_model('inception_v3', pretrained=False)
+        model.to(device)
+    elif args.model_name == 'resnet18_224':
+        model = timm.create_model('resnet18', pretrained=False)
         model.to(device)
     else:
         raise 'no match model'
@@ -100,8 +108,6 @@ def main(args):
         trainer = Trainer_CCG_TRADES(args, tb_writer, args.attack_method, device)
     else:
         raise 'no match at_method'
-
-    train_dataloader, valid_dataloader = get_dataloader.get_dataloader(args)
 
     trainer.train(model, train_dataloader, valid_dataloader, args.adv_train)
 
