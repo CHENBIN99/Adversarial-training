@@ -46,11 +46,11 @@ def get_dataloader(args):
     if 'ccg' not in args.at_method:
         transform_train = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize(image_size),
+            transforms.Resize((image_size, image_size)),
             transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                               (4, 4, 4, 4), mode='reflect').squeeze()),
             transforms.ToPILImage(),
-            transforms.RandomCrop(image_size),
+            transforms.RandomCrop((image_size, image_size)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
         ])
@@ -102,11 +102,11 @@ def get_dataloader(args):
             train_dataset = datasets.ImageFolder(os.path.join(args.root_path, args.data_root, 'ImageNet', 'train'),
                                                  transform_train)
             train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                                           num_workers=args.num_works, pin_memory=True)
+                                                           num_workers=args.num_works, pin_memory=True, drop_last=True)
             valid_dataset = datasets.ImageFolder(os.path.join(args.root_path, args.data_root, 'ImageNet', 'val/'),
                                                  transform_test)
             valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True,
-                                                           num_workers=args.num_works, pin_memory=True)
+                                                           num_workers=args.num_works, pin_memory=True, drop_last=True)
         else:
             raise NotImplemented
 
@@ -115,11 +115,11 @@ def get_dataloader(args):
     else:
         transform_train_1 = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize(image_size),
+            transforms.Resize((image_size, image_size)),
             transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                               (4, 4, 4, 4), mode='reflect').squeeze()),
             transforms.ToPILImage(),
-            transforms.RandomCrop(image_size),
+            transforms.RandomCrop((image_size, image_size)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
         ])
@@ -127,11 +127,11 @@ def get_dataloader(args):
         if args.dataset == 'cifar10':
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize(image_size),
+                transforms.Resize((image_size, image_size)),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
-                transforms.RandomCrop(image_size),
+                transforms.RandomCrop((image_size, image_size)),
                 transforms.RandomHorizontalFlip(),
                 CIFAR10Policy(),
                 transforms.ToTensor(),
@@ -159,11 +159,11 @@ def get_dataloader(args):
         elif args.dataset == 'cifar100':
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize(image_size),
+                transforms.Resize((image_size, image_size)),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
-                transforms.RandomCrop(image_size),
+                transforms.RandomCrop((image_size, image_size)),
                 transforms.RandomHorizontalFlip(),
                 CIFAR10Policy(),
                 transforms.ToTensor(),
@@ -193,11 +193,11 @@ def get_dataloader(args):
 
             transform_train_2 = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize(image_size),
+                transforms.Resize((image_size, image_size)),
                 transforms.Lambda(lambda x: F.pad(x.unsqueeze(0),
                                                   (4, 4, 4, 4), mode='reflect').squeeze()),
                 transforms.ToPILImage(),
-                transforms.RandomCrop(image_size),
+                transforms.RandomCrop((image_size, image_size)),
                 transforms.RandomHorizontalFlip(),
                 CIFAR10Policy(),
                 transforms.ToTensor(),
