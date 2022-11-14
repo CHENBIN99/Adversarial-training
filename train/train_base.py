@@ -20,7 +20,6 @@ class Trainer_base:
         self.best_clean_acc = 0.
         self.best_robust_acc = 0.
 
-
     def get_attack(self, model, epsilon, alpha, iters):
         if self.attack_name == 'pgd':
             return torchattacks.PGD(model=model,

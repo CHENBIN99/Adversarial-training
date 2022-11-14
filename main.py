@@ -84,8 +84,34 @@ def main(args):
     elif args.model_name == 'efficientnet':
         model = timm.create_model('efficientnet_b0', pretrained=False)
         model.to(device)
+    elif args.model_name == 'incv3':
+        model = timm.create_model('inception_v3', pretrained=False)
+        model.to(device)
+    elif args.model_name == 'incv2':
+        model = timm.create_model('inception_resnet_v2', pretrained=False)
+        model.to(device)
     else:
         raise 'no match model'
+
+    if args.at_method == 'at_ens':
+        if args.static_model == 1:
+            static_model = [
+                timm.create_model('inception_v3', pretrained=True).to(device),
+                timm.create_model('resnetv2_50', pretrained=True).to(device),
+            ]
+        elif args.static_model == 2:
+            static_model = [
+                timm.create_model('inception_v3', pretrained=True).to(device),
+                timm.create_model('resnetv2_50', pretrained=True).to(device),
+                timm.create_model('inception_resnet_v2', pretrained=True).to(device),
+            ]
+        elif args.static_model == 3:
+            static_model = [
+                timm.create_model('inception_v3', pretrained=True).to(device),
+                timm.create_model('inception_resnet_v2', pretrained=True).to(device),
+            ]
+        else:
+            raise NotImplemented
 
     # choose adversarial training method
     if args.at_method == 'nature':
@@ -97,6 +123,9 @@ def main(args):
     elif args.at_method == 'at_free':
         from train.train_at_free import Trainer_Free
         trainer = Trainer_Free(args, tb_writer, args.attack_method, device, m=args.m)
+    elif args.at_method == 'at_ens':
+        from train.train_ens_adv import Trainer_Ens
+        trainer = Trainer_Ens(args, tb_writer, args.attack_method, device)
     elif args.at_method == 'trades':
         from train.train_trades import Trainer_Trades
         trainer = Trainer_Trades(args, tb_writer, args.attack_method, device)
@@ -115,7 +144,10 @@ def main(args):
     else:
         raise 'no match at_method'
 
-    trainer.train(model, train_dataloader, valid_dataloader, args.adv_train)
+    if args.at_method != 'at_ens':
+        trainer.train(model, train_dataloader, valid_dataloader, args.adv_train)
+    else:
+        trainer.train(model, static_model, train_dataloader, valid_dataloader, args.adv_train)
 
     print('Train Finished!')
 

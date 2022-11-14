@@ -71,6 +71,9 @@ def parser():
     # free
     parser.add_argument('--m', type=int, default=10)
 
+    # ens
+    parser.add_argument('--static_model', type=int, default=1)
+
     # TRADES
     parser.add_argument('--trades_beta', type=float, default=6.0)
 
