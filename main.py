@@ -81,6 +81,9 @@ def main(args):
     elif args.model_name == 'resnet18_224':
         model = timm.create_model('resnet18', pretrained=False)
         model.to(device)
+    elif args.model_name == 'efficientnet':
+        model = timm.create_model('efficientnet_b0', pretrained=False)
+        model.to(device)
     else:
         raise 'no match model'
 
