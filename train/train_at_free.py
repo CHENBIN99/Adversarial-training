@@ -32,6 +32,7 @@ class Trainer_Free(Trainer_base):
 
         delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
 
+        setattr(self.args, 'max_epochs', self.args // self.m)
         for epoch in range(0, self.args.max_epochs):
             # train_file
             with tqdm(total=len(train_loader)) as _tqdm:

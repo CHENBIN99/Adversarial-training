@@ -20,9 +20,9 @@ def parser():
     # parameters for generating adversarial examples
     parser.add_argument('--attack_method', type=str, default='pgd',
                         choices=['pgd', 'fgsm'])
-    parser.add_argument('--epsilon', '-e', type=float, default=8 / 255,
+    parser.add_argument('--epsilon', '-e', type=float, default=8,
                         help='maximum perturbation of adversaries (4/255=0.0157)')
-    parser.add_argument('--alpha', '-a', type=float, default=2 / 255,
+    parser.add_argument('--alpha', '-a', type=float, default=2,
                         help='movement multiplier per iteration when generating adversarial examples (2/255=0.00784)')
     parser.add_argument('--iters', type=int, default=10,
                         help='maximum iteration when generating adversarial examples')
@@ -69,7 +69,9 @@ def parser():
     parser.add_argument('--num_classes', type=int, default=10)
 
     # free
-    parser.add_argument('--m', type=int, default=10)
+    # default: m=8 for cifar10 and m=4 for imagenet
+    parser.add_argument('--m', type=int, default=4,
+                        help='the hyper-parameter of the free-at')
 
     # ens
     parser.add_argument('--static_model', type=int, default=1)

@@ -20,6 +20,8 @@ def main(args):
     same_seeds(args.seed)
     project_path = get_project_path()
     setattr(args, 'root_path', project_path)
+    setattr(args, 'epsilon', args.epsilon / 255.0)
+    setattr(args, 'alpha', args.alpha / 255.0)
 
     exp_name = get_exp_name(args)
     tb_folder = os.path.join(project_path, args.save_root, args.exp_series, exp_name)
@@ -72,12 +74,6 @@ def main(args):
     elif args.model_name == 'preactresnet18':
         model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if args.dataset != 'tinyimagenet' else 2)
         model.to(device)
-    elif args.model_name == 'inc_v2_224':
-        model = timm.create_model('inception_resnet_v2', pretrained=False)
-        model.to(device)
-    elif args.model_name == 'inc_v3_224':
-        model = timm.create_model('inception_v3', pretrained=False)
-        model.to(device)
     elif args.model_name == 'resnet18_224':
         model = timm.create_model('resnet18', pretrained=False)
         model.to(device)
@@ -90,6 +86,8 @@ def main(args):
     elif args.model_name == 'incv2':
         model = timm.create_model('inception_resnet_v2', pretrained=False)
         model.to(device)
+    elif args.model_name == 'swin_t':
+        model = timm.create_model('swin_tiny_patch4')
     else:
         raise 'no match model'
 
