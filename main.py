@@ -121,6 +121,9 @@ def main(args):
     elif args.at_method == 'at_free':
         from train.train_at_free import Trainer_Free
         trainer = Trainer_Free(args, tb_writer, args.attack_method, device, m=args.m)
+    elif args.at_method == 'at_fast':
+        from train.train_fast_at import Trainer_Fast
+        trainer = Trainer_Fast(args, tb_writer, args.attack_method, device, m=1, random_init=True)
     elif args.at_method == 'at_ens':
         from train.train_ens_adv import Trainer_Ens
         trainer = Trainer_Ens(args, tb_writer, args.attack_method, device)

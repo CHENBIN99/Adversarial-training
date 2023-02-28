@@ -42,6 +42,43 @@ class Trainer_base:
         elif self.attack_name == 'fgsm':
             return 'FGSM'
 
+    def adjust_learning_rate(self, opt, cur_iters, len_loader, epoch):
+        """
+        Adjust the learning rate during training.
+        :param opt: optimizer
+        :param cur_iters: current iteration
+        :param len_loader: the total number of mini-batch
+        :param epoch: current epoch
+        :return: None
+        """
+        if self.args.lr_schedule == 'milestone':
+            if epoch < int(self.args.ms_1 * self.args.max_epochs):
+                lr = self.args.learning_rate * 0.1
+            elif epoch < int(self.args.ms_2 * self.args.max_epochs):
+                lr = self.args.learning_rate * 0.01
+            elif epoch < int(self.args.ms_3 * self.args.max_epochs):
+                lr = self.args.learning_rate * 0.001
+        elif self.args.lr_schedule == 'cycle_1':
+            cycle = [0, 2, 12, 24, 30]
+            lr_cycle = [1e-6, 0.4, 0.04, 0.004, 0.0004]
+            if cur_iters < len_loader * cycle[1]:
+                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
+                     (cur_iters - len_loader * cycle[0])
+            elif cur_iters < len_loader * cycle[2]:
+                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
+                     (cur_iters - len_loader * cycle[1])
+            elif cur_iters < len_loader * cycle[3]:
+                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
+                     (cur_iters - len_loader * cycle[2])
+            elif cur_iters <= len_loader * cycle[4]:
+                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
+                     (cur_iters - len_loader * cycle[3])
+        else:
+            raise NotImplemented
+
+        for param_group in opt.param_groups:
+            param_group["lr"] = lr
+
     def save_checkpoint(self, model, epoch, is_best=False):
         if not is_best:
             file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
@@ -52,7 +89,7 @@ class Trainer_base:
     def train(self, **kwargs):
         pass
 
-    def valid(self, model, valid_loader, use_pseudo_label=False):
+    def valid(self, model, valid_loader):
         total_correct_nat = 0
         total_correct_adv = 0
         total_acc_nat = 0.
@@ -73,7 +110,7 @@ class Trainer_base:
                     std_acc_num = evaluate(pred.cpu().numpy(), label.cpu().numpy(), 'sum')
 
                     with torch.enable_grad():
-                        adv_data = attack_method(data, pred if use_pseudo_label else label)
+                        adv_data = attack_method(data, label)
                     adv_output = model(adv_data)
                     adv_pred = torch.max(adv_output, dim=1)[1]
                     adv_acc_num = evaluate(adv_pred.cpu().numpy(), label.cpu().numpy(), 'sum')

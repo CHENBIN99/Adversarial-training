@@ -47,7 +47,6 @@ class Trainer_Free(Trainer_base):
 
                         # Loss
                         loss = self.loss_fn(adv_output, label)
-
                         loss.backward()
                         opt.step()
                         grad = adv_data.grad.data

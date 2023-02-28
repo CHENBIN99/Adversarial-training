@@ -1,63 +1,72 @@
 """
-Standard Adversarial Training
+FAST IS BETTER THAN FREE: REVISITING ADVERSARIAL TRAINING
+http://arxiv.org/abs/2001.03994
 """
 import os
 import sys
-import numpy as np
+
+import torch
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.utils import *
 from train.train_base import Trainer_base
+from torch.autograd import Variable
 
 
-class Trainer_Ens(Trainer_base):
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Ens, self).__init__(args, writer, attack_name, device, loss_function)
+class Trainer_Fast(Trainer_base):
+    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss(), random_init=True,
+                 m=1):
+        super().__init__(args=args, writer=writer, attack_name=attack_name, device=device, loss_function=loss_function)
+        self.random_init = random_init
+        self.m = m
 
-    def train(self, model, static_model, train_loader, valid_loader=None, adv_train=True):
+    def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
                               weight_decay=self.args.weight_decay,
                               momentum=self.args.momentum)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt,
-                                                         milestones=[int(self.args.max_epochs * self.args.ms_1),
-                                                                     int(self.args.max_epochs * self.args.ms_2),
-                                                                     int(self.args.max_epochs * self.args.ms_3)],
-                                                         gamma=0.1)
-
-        num_static_model = len(static_model)
-
         _iter = 1
+
+        # delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
+        global_noise_data = torch.zeros([self.args.batch_size, 3, self.args.image_size, self.args.image_size],
+                                        device=self.device)
+        if self.random_init:
+            global_noise_data.uniform_(-self.args.epsilon, self.args.epsilon)
+
         for epoch in range(0, self.args.max_epochs):
             # train_file
             with tqdm(total=len(train_loader)) as _tqdm:
                 _tqdm.set_description('epoch:{}/{} Training:'.format(epoch+1, self.args.max_epochs))
                 for idx, (data, label) in enumerate(train_loader):
                     data, label = data.to(self.device), label.to(self.device)
+                    for i in range(self.m):
+                        # Ascend on the global noise
+                        noise_batch = Variable(global_noise_data[0:data.size(0)], requires_grad=True)
+                        adv_data = data + noise_batch
+                        adv_data.clamp_(self.args.min_image, self.args.max_image)
+                        adv_output = model(adv_data)
+                        loss = self.loss_fn(adv_output, label)
+                        loss.backward()
 
-                    # random choice
-                    selected = np.random.randint(num_static_model + 1)
-                    if selected == num_static_model:
-                        selected_model = model
-                    else:
-                        selected_model = static_model[selected]
-                    attack_method = self.get_attack(selected_model, self.args.epsilon, self.args.alpha, self.args.iters)
-                    adv_data = attack_method(data, label)
+                        # Update the noise for the next iteration
+                        pert = noise_batch.grad * self.args.epsilon * 1.25
+                        global_noise_data[0:data.size(0)] += pert.data
+                        global_noise_data.clamp_(-self.args.epsilon, self.args.epsilon)
 
-                    # training
-                    nat_output = model(data)
-                    nat_loss = self.loss_fn(nat_output, label)
+                        # Descend on global noise
+                        noise_batch = Variable(global_noise_data[0:data.size(0)], requires_grad=False)
+                        adv_data = data + noise_batch
+                        adv_data.clamp_(self.args.min_image, self.args.max_image)
+                        adv_output = model(adv_data)
+                        loss = self.loss_fn(adv_output, label)
 
-                    adv_output = model(adv_data)
-                    adv_loss = self.loss_fn(adv_output, label)
+                        # compute gradient and do SGD step
+                        opt.zero_grad()
+                        loss.backward()
+                        opt.step()
 
-                    # combine
-                    loss = 0.5 * (nat_loss + adv_loss)
-
-                    opt.zero_grad()
-                    loss.backward()
-                    opt.step()
+                    self.adjust_learning_rate(opt, _iter, len(train_loader), epoch)
 
                     if _iter % self.args.n_eval_step == 0:
                         # clean data
@@ -67,10 +76,6 @@ class Trainer_Ens(Trainer_base):
                         std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
                         # adv data
-                        if selected != num_static_model:
-                            attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters)
-                            adv_data = attack_method(data, label)
-                            adv_output = model(adv_data)
                         pred = torch.max(adv_output, dim=1)[1]
                         adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
@@ -80,13 +85,13 @@ class Trainer_Ens(Trainer_base):
 
                         if self.writer is not None:
                             self.writer.add_scalar('Train/Loss', loss.item(),
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Clean_acc', std_acc,
-                                                   epoch * len(train_loader) + idx)
-                            self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
+                            self.writer.add_scalar(f'Train/FGSM_Accuracy', adv_acc,
+                                                   epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
-                                                   epoch * len(train_loader) + idx)
+                                                   epoch * len(train_loader) + idx + 1)
                     _iter += 1
 
             if valid_loader is not None:
@@ -107,6 +112,4 @@ class Trainer_Ens(Trainer_base):
 
             if self.args.n_checkpoint_step != -1 and epoch % self.args.n_checkpoint_step == 0:
                 self.save_checkpoint(model, epoch)
-
-            scheduler.step()
 

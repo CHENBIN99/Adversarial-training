@@ -33,15 +33,12 @@ def parser():
 
     # training
     parser.add_argument('--batch_size', '-b', type=int, default=128, help='batch size')
-    parser.add_argument('--max_epoch', '-m_e', type=int, default=100,
-                        help='the maximum numbers of the model see a sample')
-    parser.add_argument('--learning_rate', '-lr', type=float, default=0.1, help='learning rate')
+    parser.add_argument('--max_epochs', type=int, default=100, help='total epochs need to run')
     parser.add_argument('--momentum', '-m', type=float, default=0.9, help='momentum for optimizer')
     parser.add_argument('--weight_decay', '-w', type=float, default=2e-4,
                         help='the parameter of l2 restriction for weights')
     parser.add_argument('--dataset', type=str, default='cifar10', help='training dataset')
     parser.add_argument('--image_size', type=int, default=-1, help='resize the image in dataset')
-    parser.add_argument('--max_epochs', type=int, default=100, help='total epochs need to run')
     parser.add_argument('--num_works', type=int, default=4, help='numbers of the workers')
     parser.add_argument('--n_eval_step', type=int, default=10,
                         help='number of iteration per one evaluation')
@@ -54,6 +51,11 @@ def parser():
     parser.add_argument('--gpu_id', '-g', default='0', help='which gpu to use')
     parser.add_argument('--multi-gpu', action="store_true",
                         help='use if machine have muti-gpu')
+
+    # lr schedule
+    parser.add_argument('--lr_schedule', type=str, default='milestone')
+    parser.add_argument('--learning_rate', '-lr', type=float, default=0.1,
+                        help='learning rate')
     parser.add_argument('--ms_1', type=float, default=0.5,
                         help='mile stone 1 of learning schedule')
     parser.add_argument('--ms_2', type=float, default=0.75,
