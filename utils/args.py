@@ -18,8 +18,7 @@ def parser():
                         help='Log progress to TensorBoard')
 
     # parameters for generating adversarial examples
-    parser.add_argument('--attack_method', type=str, default='pgd',
-                        choices=['pgd', 'fgsm'])
+    parser.add_argument('--attack_method', type=str, default='pgd')
     parser.add_argument('--epsilon', '-e', type=float, default=8,
                         help='maximum perturbation of adversaries (4/255=0.0157)')
     parser.add_argument('--alpha', '-a', type=float, default=2,
