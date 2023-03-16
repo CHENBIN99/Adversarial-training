@@ -1,6 +1,6 @@
 """
-Adversarial for free!
-https://arxiv.org/abs/1904.12843
+FAST IS BETTER THAN FREE: REVISITING ADVERSARIAL TRAINING
+http://arxiv.org/abs/2001.03994
 """
 import os
 import sys
@@ -12,27 +12,28 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.utils import *
 from train.train_base import Trainer_base
+from torch.autograd import Variable
 
 
-class Trainer_Free(Trainer_base):
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss(), m=10):
+class Trainer_Fast(Trainer_base):
+    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss(), random_init=True,
+                 m=1):
         super().__init__(args=args, writer=writer, attack_name=attack_name, device=device, loss_function=loss_function)
+        self.random_init = random_init
         self.m = m
 
     def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
                               weight_decay=self.args.weight_decay,
                               momentum=self.args.momentum)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt,
-                                                         milestones=[int(self.args.max_epochs * self.args.ms_1),
-                                                                     int(self.args.max_epochs * self.args.ms_2),
-                                                                     int(self.args.max_epochs * self.args.ms_3)],
-                                                         gamma=0.1)
         _iter = 1
 
-        delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
+        # delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
+        global_noise_data = torch.zeros([self.args.batch_size, 3, self.args.image_size, self.args.image_size],
+                                        device=self.device)
+        if self.random_init:
+            global_noise_data.uniform_(-self.args.epsilon, self.args.epsilon)
 
-        setattr(self.args, 'max_epochs', self.args // self.m)
         for epoch in range(0, self.args.max_epochs):
             # train_file
             with tqdm(total=len(train_loader)) as _tqdm:
@@ -40,18 +41,32 @@ class Trainer_Free(Trainer_base):
                 for idx, (data, label) in enumerate(train_loader):
                     data, label = data.to(self.device), label.to(self.device)
                     for i in range(self.m):
-                        opt.zero_grad()
-                        adv_data = (data + delta).detach()
-                        adv_data.requires_grad_()
+                        # Ascend on the global noise
+                        noise_batch = Variable(global_noise_data[0:data.size(0)], requires_grad=True)
+                        adv_data = data + noise_batch
+                        adv_data.clamp_(self.args.min_image, self.args.max_image)
                         adv_output = model(adv_data)
-
-                        # Loss
                         loss = self.loss_fn(adv_output, label)
                         loss.backward()
+
+                        # Update the noise for the next iteration
+                        pert = noise_batch.grad * self.args.epsilon * 1.25
+                        global_noise_data[0:data.size(0)] += pert.data
+                        global_noise_data.clamp_(-self.args.epsilon, self.args.epsilon)
+
+                        # Descend on global noise
+                        noise_batch = Variable(global_noise_data[0:data.size(0)], requires_grad=False)
+                        adv_data = data + noise_batch
+                        adv_data.clamp_(self.args.min_image, self.args.max_image)
+                        adv_output = model(adv_data)
+                        loss = self.loss_fn(adv_output, label)
+
+                        # compute gradient and do SGD step
+                        opt.zero_grad()
+                        loss.backward()
                         opt.step()
-                        grad = adv_data.grad.data
-                        delta = delta.detach() + self.args.epsilon * torch.sign(grad.detach())
-                        delta = torch.clamp(delta, -self.args.epsilon, self.args.epsilon)
+
+                    self.adjust_learning_rate(opt, _iter, len(train_loader), epoch)
 
                     if _iter % self.args.n_eval_step == 0:
                         # clean data
@@ -64,10 +79,6 @@ class Trainer_Free(Trainer_base):
                         pred = torch.max(adv_output, dim=1)[1]
                         adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
 
-                        # print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}/{len(train_loader)}\t'
-                        #       f'lr:{opt.param_groups[0]["lr"]}\n'
-                        #       f'standard acc: {std_acc:.3f}%, robustness acc: {adv_acc:.3f}%, loss:{loss.item():.3f}\n')
-
                         _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()), nat_acc='{:.3f}'.format(std_acc),
                                           rob_acc='{:.3f}'.format(adv_acc))
                         _tqdm.update(self.args.n_eval_step)
@@ -77,7 +88,7 @@ class Trainer_Free(Trainer_base):
                                                    epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Clean_acc', std_acc,
                                                    epoch * len(train_loader) + idx + 1)
-                            self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
+                            self.writer.add_scalar(f'Train/FGSM_Accuracy', adv_acc,
                                                    epoch * len(train_loader) + idx + 1)
                             self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
                                                    epoch * len(train_loader) + idx + 1)
@@ -101,6 +112,4 @@ class Trainer_Free(Trainer_base):
 
             if self.args.n_checkpoint_step != -1 and epoch % self.args.n_checkpoint_step == 0:
                 self.save_checkpoint(model, epoch)
-
-            scheduler.step()
 

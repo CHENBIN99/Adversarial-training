@@ -71,6 +71,10 @@ def main(args):
         model = torchvision.models.resnet50(pretrained=False)
         model.fc = torch.nn.Linear(2048, num_classes)
         model.to(device)
+    elif args.model_name == 'resnet101':
+        model = torchvision.models.resnet101(pretrained=False)
+        model.fc = torch.nn.Linear(2048, num_classes)
+        model.to(device)
     elif args.model_name == 'preactresnet18':
         model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if args.dataset != 'tinyimagenet' else 2)
         model.to(device)
@@ -81,10 +85,10 @@ def main(args):
         model = timm.create_model('efficientnet_b0', pretrained=False)
         model.to(device)
     elif args.model_name == 'incv3':
-        model = timm.create_model('inception_v3', pretrained=False)
+        model = timm.create_model('inception_v3', num_classes=num_classes, pretrained=False)
         model.to(device)
     elif args.model_name == 'incv2':
-        model = timm.create_model('inception_resnet_v2', pretrained=False)
+        model = timm.create_model('inception_resnet_v2', num_classes=num_classes, pretrained=False)
         model.to(device)
     elif args.model_name == 'swin_t':
         model = timm.create_model('swin_tiny_patch4')
@@ -108,6 +112,29 @@ def main(args):
                 timm.create_model('inception_v3', pretrained=True).to(device),
                 timm.create_model('inception_resnet_v2', pretrained=True).to(device),
             ]
+        elif args.static_model == 4:
+            static_model = [
+                timm.create_model('inception_v3', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
+                timm.create_model('vit_tiny_patch16_224', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/vit_tiny.pth.tar').to(device),
+            ]
+        elif args.static_model == 5:
+            static_model = [
+                timm.create_model('resnet18', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/resnet18.pth.tar').to(device),
+                timm.create_model('inception_v3', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
+                timm.create_model('vit_tiny_patch16_224', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/vit_tiny.pth.tar').to(device),
+            ]
+        elif args.static_model == 6:
+            static_model = [
+                timm.create_model('inception_v3', num_classes=num_classes
+                                  , checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
+                timm.create_model('deit_tiny_patch16_224', num_classes=num_classes,
+                                  checkpoint_path='./static_checkpoint/cifar10/deit_tiny.pth.tar').to(device),
+            ]
         else:
             raise NotImplemented
 
@@ -121,6 +148,9 @@ def main(args):
     elif args.at_method == 'at_free':
         from train.train_at_free import Trainer_Free
         trainer = Trainer_Free(args, tb_writer, args.attack_method, device, m=args.m)
+    elif args.at_method == 'at_fast':
+        from train.train_fast_at import Trainer_Fast
+        trainer = Trainer_Fast(args, tb_writer, args.attack_method, device, m=1, random_init=True)
     elif args.at_method == 'at_ens':
         from train.train_ens_adv import Trainer_Ens
         trainer = Trainer_Ens(args, tb_writer, args.attack_method, device)

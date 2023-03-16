@@ -4,6 +4,7 @@ import torch
 import glob
 from shutil import move
 import datetime
+import time
 
 import torchvision
 from torch.utils.data import DataLoader
@@ -22,33 +23,36 @@ def same_seeds(seed):
 
 def get_exp_name(args):
     # time
-    curr_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+    curr_time = time.strftime("%m%d%H%M")
 
     # model name
     model_name = args.model_name
 
     # attack method
     if args.at_method == 'nature':
-        exp_name = f'Nature_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = 'Nature'
     elif args.at_method == 'standard':
-        exp_name = f'Standard_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'Standard'
     elif args.at_method == 'at_free':
-        exp_name = f'AT-Free_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'AT-Free'
+    elif args.at_method == 'at_fast':
+        exp_name = f'AT-Fast'
     elif args.at_method == 'at_ens':
-        exp_name = f'EnsAT_{args.dataset}_{model_name}_{args.static_model}_{args.learning_rate}_{curr_time}'
+        exp_name = f'EnsAT_static-{args.static_model}'
     elif args.at_method == 'trades':
-        exp_name = f'TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'TRADES_beta-{args.trades_beta}'
     elif args.at_method == 'mart':
-        exp_name = f'MART_{args.mart_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'MART_beta-{args.mart_beta}'
     elif args.at_method == 'mart_trades':
-        exp_name = f'MART_{args.mart_beta}_TRADES_{args.trades_beta}_{args.dataset}_{model_name}_' \
-                   f'{args.learning_rate}_{curr_time}'
+        exp_name = f'MART_beta-{args.mart_beta}_TRADES_beta-{args.trades_beta}'
     elif args.at_method == 'ccg':
-        exp_name = f'CCG_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'CCG'
     elif args.at_method == 'ccg_trades':
-        exp_name = f'CCG_TRADES_{args.trades_beta}_{args.dataset}_{model_name}_{args.learning_rate}_{curr_time}'
+        exp_name = f'CCG_TRADES_beta-{args.trades_beta}'
     else:
         raise 'no match at method'
+
+    exp_name += f'_{args.dataset}_{model_name}_{args.learning_rate}_t{curr_time}'
 
     return exp_name
 
