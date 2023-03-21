@@ -8,7 +8,7 @@ numpy == 1.22.0
 opencv_python == 4.5.5.62
 tensorboardX == 2.4.1
 timm == 0.5.4
-torch == 1.10.2+cu113
+torch == 1.13.1
 torchattacks == 3.2.6
 torchvision == 0.11.3+cu113
 tqdm == 4.62.3
