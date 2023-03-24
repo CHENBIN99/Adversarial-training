@@ -64,11 +64,11 @@ def main(args):
                                       dropRate=0.0,
                                       stride=1 if args.dataset != 'tinyimagenet' else 2).to(device)
     elif args.model_name == 'resnet18':
-        model = torchvision.models.resnet18(pretrained=False)
+        model = torchvision.models.resnet18(pretrained=True)
         model.fc = torch.nn.Linear(512, num_classes)
         model.to(device)
     elif args.model_name == 'resnet50':
-        model = torchvision.models.resnet50(pretrained=False)
+        model = torchvision.models.resnet50(pretrained=True)
         model.fc = torch.nn.Linear(2048, num_classes)
         model.to(device)
     elif args.model_name == 'resnet101':

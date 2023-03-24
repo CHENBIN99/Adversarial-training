@@ -7,11 +7,9 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from utils.utils import *
-
 from train.train_base import Trainer_base
-
 from adv_lib.mart_lib import *
+from utils.utils import *
 
 
 class Trainer_Mart(Trainer_base):
@@ -30,6 +28,8 @@ class Trainer_Mart(Trainer_base):
         _iter = 0
         for epoch in range(0, self.args.max_epochs):
             # train_file
+            print('time start...')
+            start = time.time()
             for idx, (data, label) in enumerate(train_loader):
                 data, label = data.to(self.device), label.to(self.device)
 
@@ -37,42 +37,44 @@ class Trainer_Mart(Trainer_base):
                 loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label, optimizer=opt,
                                                           step_size=self.args.alpha, epsilon=self.args.epsilon,
                                                           perturb_steps=self.args.iters, beta=self.args.mart_beta,
-                                                          distance='l_inf')
+                                                          distance='l_inf', device=self.device)
                 loss = loss_adv + loss_mart
 
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
 
-                if _iter % self.args.n_eval_step == 0:
-                    # clean data
-                    with torch.no_grad():
-                        clean_output = model(data)
-                    pred = torch.max(clean_output, dim=1)[1]
-                    std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
-
-                    # adv data
-                    with torch.no_grad():
-                        adv_output = model(adv_data)
-                    pred = torch.max(adv_output, dim=1)[1]
-                    adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
-
-                    print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
-                          f'standard acc: {std_acc:.3f}%    robustness acc: {adv_acc:.3f}%\n'
-                          f'loss_adv:{loss_adv.item():.3f}  loss_mart:{loss_mart.item():.3f}\n')
-
-                    if self.writer is not None:
-                        self.writer.add_scalar('Train/Loss_adv', loss_adv.item(),
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Loss_mart', loss_mart.item(),
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Nature_Accuracy', std_acc,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
-                                               epoch * len(train_loader) + idx)
+                # if _iter % self.args.n_eval_step == 0:
+                #     # clean data
+                #     with torch.no_grad():
+                #         clean_output = model(data)
+                #     pred = torch.max(clean_output, dim=1)[1]
+                #     std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
+                #
+                #     # adv data
+                #     with torch.no_grad():
+                #         adv_output = model(adv_data)
+                #     pred = torch.max(adv_output, dim=1)[1]
+                #     adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
+                #
+                #     print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
+                #           f'standard acc: {std_acc:.3f}%    robustness acc: {adv_acc:.3f}%\n'
+                #           f'loss_adv:{loss_adv.item():.3f}  loss_mart:{loss_mart.item():.3f}\n')
+                #
+                #     if self.writer is not None:
+                #         self.writer.add_scalar('Train/Loss_adv', loss_adv.item(),
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar('Train/Loss_mart', loss_mart.item(),
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar('Train/Nature_Accuracy', std_acc,
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
+                #                                epoch * len(train_loader) + idx)
                 _iter += 1
+
+            print(f'Use: {time.time() - start}')
 
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)

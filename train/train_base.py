@@ -63,11 +63,20 @@ class Trainer_base:
         """
         if self.args.lr_schedule == 'milestone':
             if epoch < int(self.args.ms_1 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.1
+                lr = self.args.learning_rate
             elif epoch < int(self.args.ms_2 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.01
+                lr = self.args.learning_rate * 0.1
             elif epoch < int(self.args.ms_3 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.001
+                lr = self.args.learning_rate * 0.01
+        elif self.args.lr_schedule == 'milestone_warmup':
+            if epoch == 0:
+                lr = cur_iters / len_loader * self.args.learning_rate
+            elif epoch < int(self.args.ms_1 * self.args.max_epochs):
+                lr = self.args.learning_rate
+            elif epoch < int(self.args.ms_2 * self.args.max_epochs):
+                lr = self.args.learning_rate * 0.1
+            elif epoch < int(self.args.ms_3 * self.args.max_epochs):
+                lr = self.args.learning_rate * 0.01
         elif self.args.lr_schedule == 'cycle_1':
             cycle = [0, 2, 12, 24, 30]
             lr_cycle = [1e-6, 0.4, 0.04, 0.004, 0.0004]

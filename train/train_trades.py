@@ -11,6 +11,8 @@ from utils.utils import *
 from train.train_base import Trainer_base
 
 from adv_lib.trades_lib import *
+import time
+from tqdm import tqdm
 
 
 class Trainer_Trades(Trainer_base):
@@ -29,7 +31,9 @@ class Trainer_Trades(Trainer_base):
         _iter = 0
         for epoch in range(0, self.args.max_epochs):
             # train_file
-            for idx, (data, label) in enumerate(train_loader):
+            print('time start...')
+            start = time.time()
+            for idx, (data, label) in enumerate(tqdm(train_loader)):
                 data, label = data.to(self.device), label.to(self.device)
 
                 loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label, optimizer=opt,
@@ -71,6 +75,8 @@ class Trainer_Trades(Trainer_base):
                         self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
                                                epoch * len(train_loader) + idx)
                 _iter += 1
+
+            print(f'Use: {time.time() - start}')
 
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)

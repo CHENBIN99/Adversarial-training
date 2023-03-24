@@ -31,6 +31,8 @@ class Trainer_CCG(Trainer_base):
                                                          gamma=0.1)
         _iter = 0
         for epoch in range(0, self.args.max_epochs):
+            print('time start...')
+            start = time.time()
             # switch to second dataloader
             if epoch > self.args.max_epochs * self.args.ms_1:
                 train_loader = train_loaders[1]
@@ -58,30 +60,32 @@ class Trainer_CCG(Trainer_base):
                 loss.backward()
                 opt.step()
 
-                if _iter % self.args.n_eval_step == 0:
-                    # clean data
-                    with torch.no_grad():
-                        std_output = model(data_pair)
-                    pred = torch.max(std_output, dim=1)[1]
-                    std_acc = evaluate(pred.cpu().numpy(), labels.repeat(2).cpu().numpy()) * 100
-
-                    # adv data
-                    pred = torch.max(adv_output, dim=1)[1]
-                    adv_acc = evaluate(pred.cpu().numpy(), labels.repeat(2).cpu().numpy()) * 100
-
-                    print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
-                          f'standard acc: {std_acc:.3f}%, robustness acc: {adv_acc:.3f}%, loss:{loss.item():.3f}\n')
-
-                    if self.writer is not None:
-                        self.writer.add_scalar('Train/Loss', loss.item(),
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Clean_acc', std_acc,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
-                                               epoch * len(train_loader) + idx)
+                # if _iter % self.args.n_eval_step == 0:
+                #     # clean data
+                #     with torch.no_grad():
+                #         std_output = model(data_pair)
+                #     pred = torch.max(std_output, dim=1)[1]
+                #     std_acc = evaluate(pred.cpu().numpy(), labels.repeat(2).cpu().numpy()) * 100
+                #
+                #     # adv data
+                #     pred = torch.max(adv_output, dim=1)[1]
+                #     adv_acc = evaluate(pred.cpu().numpy(), labels.repeat(2).cpu().numpy()) * 100
+                #
+                #     print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
+                #           f'standard acc: {std_acc:.3f}%, robustness acc: {adv_acc:.3f}%, loss:{loss.item():.3f}\n')
+                #
+                #     if self.writer is not None:
+                #         self.writer.add_scalar('Train/Loss', loss.item(),
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar('Train/Clean_acc', std_acc,
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
+                #                                epoch * len(train_loader) + idx)
+                #         self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
+                #                                epoch * len(train_loader) + idx)
                 _iter += 1
+
+            print(f'Use: {time.time() - start}')
 
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)

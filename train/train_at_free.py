@@ -20,19 +20,13 @@ class Trainer_Free(Trainer_base):
         self.m = m
 
     def train(self, model, train_loader, valid_loader=None, adv_train=True):
-        opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
-                              weight_decay=self.args.weight_decay,
+        opt = torch.optim.SGD(model.parameters(), self.args.learning_rate, weight_decay=self.args.weight_decay,
                               momentum=self.args.momentum)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt,
-                                                         milestones=[int(self.args.max_epochs * self.args.ms_1),
-                                                                     int(self.args.max_epochs * self.args.ms_2),
-                                                                     int(self.args.max_epochs * self.args.ms_3)],
-                                                         gamma=0.1)
         _iter = 1
 
         delta = torch.zeros(self.args.batch_size, 3, self.args.image_size, self.args.image_size, device=self.device)
 
-        setattr(self.args, 'max_epochs', self.args // self.m)
+        setattr(self.args, 'max_epochs', self.args.max_epochs // self.m)
         for epoch in range(0, self.args.max_epochs):
             # train_file
             with tqdm(total=len(train_loader)) as _tqdm:
@@ -82,6 +76,7 @@ class Trainer_Free(Trainer_base):
                             self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
                                                    epoch * len(train_loader) + idx + 1)
                     _iter += 1
+                    self.adjust_learning_rate(opt, _iter, len(train_loader), epoch)
 
             if valid_loader is not None:
                 valid_acc, valid_adv_acc = self.valid(model, valid_loader)
@@ -101,6 +96,4 @@ class Trainer_Free(Trainer_base):
 
             if self.args.n_checkpoint_step != -1 and epoch % self.args.n_checkpoint_step == 0:
                 self.save_checkpoint(model, epoch)
-
-            scheduler.step()
 
