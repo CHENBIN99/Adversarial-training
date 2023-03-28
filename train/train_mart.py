@@ -4,96 +4,62 @@ paper: IMPROVING ADVERSARIAL ROBUSTNESS REQUIRES REVISITING MISCLASSIFIED EXAMPL
 """
 import os
 import sys
+from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from train.train_base import Trainer_base
+from train.train_base import TrainerBase
 from adv_lib.mart_lib import *
 from utils.utils import *
+from utils.AverageMeter import AverageMeter
 
 
-class Trainer_Mart(Trainer_base):
+class TrainerMart(TrainerBase):
     def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Mart, self).__init__(args, writer, attack_name, device, loss_function)
+        super(TrainerMart, self).__init__(args, writer, attack_name, device, loss_function)
 
-    def train(self, model, train_loader, valid_loader=None, adv_train=True):
-        opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
-                              weight_decay=self.args.weight_decay,
-                              momentum=self.args.momentum)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt,
-                                                         milestones=[int(self.args.max_epochs * self.args.ms_1),
-                                                                     int(self.args.max_epochs * self.args.ms_2),
-                                                                     int(self.args.max_epochs * self.args.ms_3)],
-                                                         gamma=0.1)
-        _iter = 0
-        for epoch in range(0, self.args.max_epochs):
-            # train_file
-            print('time start...')
-            start = time.time()
+    def train_one_epoch(self, model, train_loader, optimizer, epoch):
+        nat_result = AverageMeter()
+        adv_result = AverageMeter()
+        with tqdm(total=len(train_loader)) as _tqdm:
+            _tqdm.set_description('epoch:{}/{} Training:'.format(epoch + 1, self.args.max_epochs))
             for idx, (data, label) in enumerate(train_loader):
+                n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
 
                 # MART Loss
-                loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label, optimizer=opt,
+                loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label, optimizer=optimizer,
                                                           step_size=self.args.alpha, epsilon=self.args.epsilon,
                                                           perturb_steps=self.args.iters, beta=self.args.mart_beta,
                                                           distance='l_inf', device=self.device)
                 loss = loss_adv + loss_mart
-
-                opt.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                opt.step()
+                optimizer.step()
 
-                # if _iter % self.args.n_eval_step == 0:
-                #     # clean data
-                #     with torch.no_grad():
-                #         clean_output = model(data)
-                #     pred = torch.max(clean_output, dim=1)[1]
-                #     std_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
-                #
-                #     # adv data
-                #     with torch.no_grad():
-                #         adv_output = model(adv_data)
-                #     pred = torch.max(adv_output, dim=1)[1]
-                #     adv_acc = evaluate(pred.cpu().numpy(), label.cpu().numpy()) * 100
-                #
-                #     print(f'[TRAIN]-[{epoch}]/[{self.args.max_epochs}]-iter:{_iter}: lr:{opt.param_groups[0]["lr"]}\n'
-                #           f'standard acc: {std_acc:.3f}%    robustness acc: {adv_acc:.3f}%\n'
-                #           f'loss_adv:{loss_adv.item():.3f}  loss_mart:{loss_mart.item():.3f}\n')
-                #
-                #     if self.writer is not None:
-                #         self.writer.add_scalar('Train/Loss_adv', loss_adv.item(),
-                #                                epoch * len(train_loader) + idx)
-                #         self.writer.add_scalar('Train/Loss_mart', loss_mart.item(),
-                #                                epoch * len(train_loader) + idx)
-                #         self.writer.add_scalar('Train/Nature_Accuracy', std_acc,
-                #                                epoch * len(train_loader) + idx)
-                #         self.writer.add_scalar(f'Train/{self.get_attack_name()}_Accuracy', adv_acc,
-                #                                epoch * len(train_loader) + idx)
-                #         self.writer.add_scalar('Train/Lr', opt.param_groups[0]["lr"],
-                #                                epoch * len(train_loader) + idx)
-                _iter += 1
+                # Validation during training
+                if self._iter % self.args.n_eval_step == 0:
+                    # clean data
+                    with torch.no_grad():
+                        nat_output = model(data)
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach() == label.cpu().numpy()).sum()
+                    nat_result.update(nat_correct_num, n)
 
-            print(f'Use: {time.time() - start}')
+                    # adv data
+                    with torch.no_grad():
+                        adv_output = model(adv_data)
+                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach() == label.cpu().numpy()).sum()
+                    adv_result.update(adv_correct_num, n)
 
-            if valid_loader is not None:
-                valid_acc, valid_adv_acc = self.valid(model, valid_loader)
-                valid_acc, valid_adv_acc = valid_acc * 100, valid_adv_acc * 100
-                if valid_adv_acc >= self.best_robust_acc:
-                    self.best_clean_acc = valid_acc
-                    self.best_robust_acc = valid_adv_acc
-                    self.save_checkpoint(model, epoch, is_best=True)
+                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()), nat_acc='{:.3f}'.format(nat_result.acc_cur),
+                                      rob_acc='{:.3f}'.format(adv_result.acc_cur))
+                    _tqdm.update(self.args.n_eval_step)
 
-                print(f'[EVAL] [{epoch}]/[{self.args.max_epochs}]:\n'
-                      f'std_acc:{valid_acc}%  adv_acc:{valid_adv_acc}%\n'
-                      f'best_epoch:{epoch}\tbest_rob_acc:{self.best_robust_acc}\n')
-
-                if self.writer is not None:
-                    self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
-                    self.writer.add_scalar(f'Valid/{self.get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
-
-            if self.args.n_checkpoint_step != -1 and epoch % self.args.n_checkpoint_step == 0:
-                self.save_checkpoint(model, epoch)
-
-            scheduler.step()
-
+                    if self.writer is not None:
+                        self.writer.add_scalar('Train/Loss', loss.item(), epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur, epoch * len(train_loader) + idx)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy', adv_result.acc_cur,
+                                               epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"],
+                                               epoch * len(train_loader) + idx)
+                self._iter += 1

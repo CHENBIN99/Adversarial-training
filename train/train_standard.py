@@ -8,14 +8,6 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.utils import *
-from train.train_base import Trainer_base
-
-
-class Trainer_Standard(Trainer_base):
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(Trainer_Standard, self).__init__(args, writer, attack_name, device, loss_function)
-
-    def train(self, model, train_loader, valid_loader=None, adv_train=True):
         opt = torch.optim.SGD(model.parameters(), self.args.learning_rate,
                               weight_decay=self.args.weight_decay,
                               momentum=self.args.momentum)
@@ -93,4 +85,10 @@ class Trainer_Standard(Trainer_base):
                 self.save_checkpoint(model, epoch)
 
             scheduler.step()
+                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur, epoch * len(train_loader) + idx)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy', adv_result.acc_cur,
+                                               epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"],
+                                               epoch * len(train_loader) + idx)
+                self._iter += 1
 

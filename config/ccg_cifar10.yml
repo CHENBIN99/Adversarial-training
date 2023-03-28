@@ -1,0 +1,48 @@
+TRAIN:
+  # Random Seed
+  seed: 0
+
+  # Number of training epochs
+  epochs: 100
+
+  # Architecture name in TIMM
+  arch: 'wrn3410'
+
+  # SGD hyper-parameters
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 0.0002
+  lr_epochs: !!python/tuple [ 0, 75, 85, 95, 100 ]
+
+  # Print frequency, is used for both training and testing
+  print_freq: 50
+  save_ckp_every_epoch: True
+
+  # CCG
+  lamda: 1.0
+  T: 1.0
+
+ADV:
+  # PGD attack
+  method: 'pgd'
+  eps: 8.0
+  alpha: 2.0
+  iters: 20
+  iters_eval: 10
+
+DATA:
+  data_path: 'data'
+  workers: 10
+  batch_size: 128
+  image_size: 40
+  crop_size: 32
+  num_class: 10
+
+  mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
+  std: !!python/tuple [ 1.0, 1.0, 1.0 ]
+
+SAVE:
+  log: 'log'
+  checkpoint: 'checkpoint'
+
+

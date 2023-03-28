@@ -7,50 +7,44 @@ import torch
 from tqdm import tqdm
 
 from utils.utils import *
+from abc import ABC, abstractmethod
+from utils.AverageMeter import AverageMeter
 
 
-class Trainer_base:
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        self.args = args
+class TrainerBase(object):
+    def __init__(self, cfg, writer, device, loss_function=torch.nn.CrossEntropyLoss()):
+        self.cfg = cfg
         self.writer = writer
         self.device = device
-        self.attack_name = attack_name
         self.loss_fn = loss_function
         # log
         self.best_clean_acc = 0.
         self.best_robust_acc = 0.
+        self._iter = 1
 
-    def get_attack(self, model, epsilon, alpha, iters):
-        if self.attack_name == 'pgd':
-            return torchattacks.PGD(model=model,
-                                    eps=epsilon,
-                                    alpha=alpha,
-                                    steps=iters,
-                                    random_start=True)
-        elif self.attack_name == 'fgsm':
-            return torchattacks.FGSM(model=model,
-                                     eps=epsilon)
-        elif self.attack_name == 'rfgsm':
-            return torchattacks.RFGSM(model=model,
-                                      eps=epsilon,
-                                      alpha=alpha,
-                                      steps=iters)
+    def _get_attack(self, model, epsilon, alpha, iters):
+        if self.cfg.ADV.method == 'pgd':
+            return torchattacks.PGD(model=model, eps=epsilon, alpha=alpha, steps=iters, random_start=True)
+        elif self.cfg.ADV.method == 'fgsm':
+            return torchattacks.FGSM(model=model, eps=epsilon)
+        elif self.cfg.ADV.method == 'rfgsm':
+            return torchattacks.RFGSM(model=model, eps=epsilon, alpha=alpha, steps=iters)
         else:
             raise 'no match attack method'
 
-    def get_attack_name(self, train=True, upper=True):
+    def _get_attack_name(self, train=True):
         if self.attack_name == 'pgd':
             if train:
-                return f'PGD-{self.args.iters}'
+                return f'PGD-{self.cfg.ADV.iters}'
             else:
-                return f'PGD-{self.args.iters_eval}'
+                return f'PGD-{self.cfg.ADV.iters_eval}'
         elif self.attack_name == 'fgsm':
             return 'FGSM'
         elif self.attack_name == 'rfgsm':
             if train:
-                return f'RFGSM-{self.args.iters}'
+                return f'RFGSM-{self.cfg.ADV.iters}'
             else:
-                return f'RFGSM-{self.args.iters_eval}'
+                return f'RFGSM-{self.cfg.ADV.iters_eval}'
 
     def adjust_learning_rate(self, opt, cur_iters, len_loader, epoch):
         """
@@ -61,120 +55,81 @@ class Trainer_base:
         :param epoch: current epoch
         :return: None
         """
-        if self.args.lr_schedule == 'milestone':
-            if epoch < int(self.args.ms_1 * self.args.max_epochs):
-                lr = self.args.learning_rate
-            elif epoch < int(self.args.ms_2 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.1
-            elif epoch < int(self.args.ms_3 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.01
-        elif self.args.lr_schedule == 'milestone_warmup':
-            if epoch == 0:
-                lr = cur_iters / len_loader * self.args.learning_rate
-            elif epoch < int(self.args.ms_1 * self.args.max_epochs):
-                lr = self.args.learning_rate
-            elif epoch < int(self.args.ms_2 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.1
-            elif epoch < int(self.args.ms_3 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.01
-        elif self.args.lr_schedule == 'cycle_1':
-            cycle = [0, 2, 12, 24, 30]
-            lr_cycle = [1e-6, 0.4, 0.04, 0.004, 0.0004]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
-        elif self.args.lr_schedule == 'cycle_2':
-            cycle = [0, 1, 10, 45, 50]
-            lr_cycle = [1e-6, 0.2, 0.1, 0.01, 0.001]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
-        elif self.args.lr_schedule == 'cycle_3':
-            cycle = [0, 1, 40, 45, 50]
-            lr_cycle = [1e-6, 0.1, 0.1, 0.01, 0.001]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
-        else:
-            raise NotImplemented
+        num_milestone = len(self.cfg.TRAIN.lr_epochs)
+
+        for i in range(1, num_milestone):
+            if int(self.cfg.TRAIN.lr_epochs[0]) <= epoch < int(self.cfg.TRAIN.lr_epochs):
+                self.cfg.TRAIN.lr *= 0.1
 
         for param_group in opt.param_groups:
-            param_group["lr"] = lr
+            param_group["lr"] = self.cfg.TRAIN.lr
 
     def save_checkpoint(self, model, epoch, is_best=False):
         if not is_best:
-            file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
+            file_name = os.path.join(self.cfg.ckp_path, f'checkpoint_{epoch}.pth')
         else:
-            file_name = os.path.join(self.args.model_folder, f'checkpoint_best.pth')
+            file_name = os.path.join(self.cfg.ckp_path, f'checkpoint_best.pth')
         torch.save(model.state_dict(), file_name)
 
-    def train(self, **kwargs):
-        pass
+    def train(self, model, train_loader, valid_loader):
+        opt = torch.optim.SGD(model.parameters(), self.cfg.TRAIN.lr, weight_decay=self.cfg.TRAIN.weight_decay,
+                              momentum=self.cfg.TRAIN.momentum)
+
+        for epoch in range(0, self.cfg.TRAIN.epochs):
+            # training
+            self.train_one_epoch(model, train_loader, opt, epoch)
+
+            # validation
+            valid_acc, valid_adv_acc = self.valid(model, valid_loader)
+            if valid_adv_acc >= self.best_robust_acc:
+                self.best_clean_acc = valid_acc
+                self.best_robust_acc = valid_adv_acc
+                self.save_checkpoint(model, epoch, is_best=True)
+
+            print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
+                  f'std_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
+                  f'best_epoch:{epoch}\tbest_rob_acc:{self.best_robust_acc * 100}%\n')
+
+            # write to TensorBoard
+            if self.writer is not None:
+                self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
+                self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
+
+            # save checkpoint
+            if self.cfg.TRAIN.save_ckp_every_epoch:
+                self.save_checkpoint(model, epoch)
+
+    @abstractmethod
+    def train_one_epoch(self, model, train_loader, optimizer, epoch):
+        ...
 
     def valid(self, model, valid_loader):
-        total_correct_nat = 0
-        total_correct_adv = 0
-        total_acc_nat = 0.
-        total_acc_adv = 0.
-        num = 0
-
-        attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
+        nat_result = AverageMeter()
+        adv_result = AverageMeter()
+        attack_method = self._get_attack(model, self.cfg.ADV.eps, self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
 
         model.eval()
-
         with torch.no_grad():
             with tqdm(total=len(valid_loader)) as _tqdm:
                 _tqdm.set_description('Validating:')
                 for idx, (data, label) in enumerate(valid_loader):
                     data, label = data.to(self.device), label.to(self.device)
-                    output = model(data)
-                    pred = torch.max(output, dim=1)[1]
-                    std_acc_num = evaluate(pred.cpu().numpy(), label.cpu().numpy(), 'sum')
+                    n = data.size(0)
 
+                    # validation using natural data
+                    nat_output = model(data)
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().numpy() == label.cpu().numpy()).sum()
+                    nat_result.update(nat_correct_num, n)
+
+                    # validation using adversarial data
                     with torch.enable_grad():
                         adv_data = attack_method(data, label)
                     adv_output = model(adv_data)
-                    adv_pred = torch.max(adv_output, dim=1)[1]
-                    adv_acc_num = evaluate(adv_pred.cpu().numpy(), label.cpu().numpy(), 'sum')
+                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().numpy() == label.cpu().numpy()).sum()
+                    adv_result.update(adv_correct_num, n)
 
-                    total_correct_nat += std_acc_num
-                    total_correct_adv += adv_acc_num
-                    num += output.shape[0]
-                    total_acc_nat = total_correct_nat / num
-                    total_acc_adv = total_correct_adv / num
-
-                    _tqdm.set_postfix(nat_acc='{:.3f}'.format(total_acc_nat * 100),
-                                      rob_acc='{:.3f}'.format(total_acc_adv * 100))
+                    _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100),
+                                      rob_acc='{:.3f}%'.format(adv_result.acc_avg * 100))
                     _tqdm.update(1)
-
         model.train()
-
-        return total_acc_nat, total_acc_adv
-
+        return nat_result.acc_avg, adv_result.acc_avg
