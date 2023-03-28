@@ -107,5 +107,3 @@ def parse_config_file(args):
     config.ADV.alpha = config.ADV.alpha / 255.
 
     return config
-
-

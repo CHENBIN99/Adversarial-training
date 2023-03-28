@@ -33,14 +33,14 @@ class TrainerBase(object):
             raise 'no match attack method'
 
     def _get_attack_name(self, train=True):
-        if self.attack_name == 'pgd':
+        if self.cfg.ADV.method == 'pgd':
             if train:
                 return f'PGD-{self.cfg.ADV.iters}'
             else:
                 return f'PGD-{self.cfg.ADV.iters_eval}'
-        elif self.attack_name == 'fgsm':
+        elif self.cfg.ADV.method == 'fgsm':
             return 'FGSM'
-        elif self.attack_name == 'rfgsm':
+        elif self.cfg.ADV.method == 'rfgsm':
             if train:
                 return f'RFGSM-{self.cfg.ADV.iters}'
             else:
@@ -118,14 +118,16 @@ class TrainerBase(object):
 
                     # validation using natural data
                     nat_output = model(data)
-                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().numpy() == label.cpu().numpy()).sum()
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
                     # validation using adversarial data
                     with torch.enable_grad():
                         adv_data = attack_method(data, label)
                     adv_output = model(adv_data)
-                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().numpy() == label.cpu().numpy()).sum()
+                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
                     adv_result.update(adv_correct_num, n)
 
                     _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100),
