@@ -106,8 +106,11 @@ class TrainerBase(object):
 
             # write to TensorBoard
             if self.writer is not None:
-                self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
-                self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
+                if self.cfg.method != 'nature':
+                    self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
+                    self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
+                else:
+                    self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
 
             # save checkpoint
             if self.cfg.TRAIN.save_ckp_every_epoch:
@@ -136,16 +139,20 @@ class TrainerBase(object):
                         astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
-                    # validation using adversarial data
-                    with torch.enable_grad():
-                        adv_data = attack_method(data, label)
-                    adv_output = model(adv_data)
-                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
-                        astype(int).sum()
-                    adv_result.update(adv_correct_num, n)
+                    if self.cfg.method != 'nature':
+                        # validation using adversarial data
+                        with torch.enable_grad():
+                            adv_data = attack_method(data, label)
+                        adv_output = model(adv_data)
+                        adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                            astype(int).sum()
+                        adv_result.update(adv_correct_num, n)
 
-                    _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100),
-                                      rob_acc='{:.3f}%'.format(adv_result.acc_avg * 100))
+                    if self.cfg.method != 'nature':
+                        _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100),
+                                          rob_acc='{:.3f}%'.format(adv_result.acc_avg * 100))
+                    else:
+                        _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100))
                     _tqdm.update(1)
         model.train()
         return nat_result.acc_avg, adv_result.acc_avg
