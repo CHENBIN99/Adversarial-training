@@ -1,5 +1,5 @@
 """
-正常的对抗训练
+Base implement of adversarial attack training
 """
 
 import torchattacks
@@ -18,6 +18,7 @@ class TrainerBase(object):
         self.device = device
         self.loss_fn = loss_function
         # log
+        self.best_epoch = 0
         self.best_clean_acc = 0.
         self.best_robust_acc = 0.
         self._iter = 1
@@ -46,20 +47,20 @@ class TrainerBase(object):
             else:
                 return f'RFGSM-{self.cfg.ADV.iters_eval}'
 
-    def adjust_learning_rate(self, opt, cur_iters, len_loader, epoch):
+    def adjust_learning_rate(self, opt, len_loader, epoch):
         """
         Adjust the learning rate during training.
         :param opt: optimizer
-        :param cur_iters: current iteration
         :param len_loader: the total number of mini-batch
         :param epoch: current epoch
         :return: None
         """
         num_milestone = len(self.cfg.TRAIN.lr_epochs)
 
-        for i in range(1, num_milestone):
-            if int(self.cfg.TRAIN.lr_epochs[0]) <= epoch < int(self.cfg.TRAIN.lr_epochs):
-                self.cfg.TRAIN.lr *= 0.1
+        for i in range(0, num_milestone - 1):
+            if epoch == self.cfg.TRAIN.lr_epochs[i]:
+                self.cfg.TRAIN.lr = self.cfg.TRAIN.lr_values[i]
+                break
 
         for param_group in opt.param_groups:
             param_group["lr"] = self.cfg.TRAIN.lr
@@ -81,14 +82,27 @@ class TrainerBase(object):
 
             # validation
             valid_acc, valid_adv_acc = self.valid(model, valid_loader)
-            if valid_adv_acc >= self.best_robust_acc:
-                self.best_clean_acc = valid_acc
-                self.best_robust_acc = valid_adv_acc
-                self.save_checkpoint(model, epoch, is_best=True)
+            if self.cfg.method == 'nature':
+                if valid_acc >= self.best_clean_acc:
+                    self.best_clean_acc = valid_acc
+                    self.best_robust_acc = valid_adv_acc
+                    self.best_epoch = epoch
+                    self.save_checkpoint(model, epoch, is_best=True)
+            else:
+                if valid_adv_acc >= self.best_robust_acc:
+                    self.best_clean_acc = valid_acc
+                    self.best_robust_acc = valid_adv_acc
+                    self.best_epoch = epoch
+                    self.save_checkpoint(model, epoch, is_best=True)
 
-            print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
-                  f'std_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
-                  f'best_epoch:{epoch}\tbest_rob_acc:{self.best_robust_acc * 100}%\n')
+            if self.cfg.method == 'nature':
+                print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
+                      f'nat_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
+                      f'best_epoch:{self.best_epoch}\tbest_nat_acc:{self.best_clean_acc * 100}%\n')
+            else:
+                print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
+                      f'nat_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
+                      f'best_epoch:{self.best_epoch}\tbest_nat_acc:{self.best_robust_acc * 100}%\n')
 
             # write to TensorBoard
             if self.writer is not None:

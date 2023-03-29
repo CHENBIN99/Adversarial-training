@@ -59,7 +59,7 @@ def main(cfg):
     # get dataloader
     train_dataloader, valid_dataloader = get_dataloader.get_dataloader(configs)
 
-    model = get_model(cfg.TRAIN.arch, cfg.DATA.num_class, cfg.dataset, device)
+    model = get_model(cfg.TRAIN.arch, cfg.DATA.num_class, cfg.dataset, device, cfg.TRAIN.pretrain, cfg.TRAIN.compile)
 
     if cfg.method == 'at_ens':
         model_static = get_static_model(cfg.TRAIN.static_model_id, cfg.DATA.num_class, device)

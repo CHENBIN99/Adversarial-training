@@ -44,31 +44,36 @@ class TrainerMartTrades(TrainerBase):
                 optimizer.step()
 
                 # Validation during training
-                if self._iter % self.args.n_eval_step == 0:
+                if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
                     # clean data
                     with torch.no_grad():
                         nat_output = model(data)
-                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach() == label.cpu().numpy()).sum()
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
                     # adv data
                     with torch.no_grad():
                         adv_output = model(adv_data)
-                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach() == label.cpu().numpy()).sum()
+                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
                     adv_result.update(adv_correct_num, n)
 
-                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()), nat_acc='{:.3f}'.format(nat_result.acc_cur),
-                                      rob_acc='{:.3f}'.format(adv_result.acc_cur))
-                    _tqdm.update(self.args.n_eval_step)
+                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
+                                      nat_acc='{:.3f}'.format(nat_result.acc_cur * 100),
+                                      rob_acc='{:.3f}'.format(adv_result.acc_cur * 100))
+                    if not idx + 1 == len(train_loader):
+                        _tqdm.update(self.cfg.TRAIN.print_freq)
+                    else:
+                        _tqdm.update(len(train_loader) % self.cfg.TRAIN.print_freq)
 
                     if self.writer is not None:
-                        self.writer.add_scalar('Train/Loss_adv', loss_adv.item(), epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Loss_mart', loss_mart.item(), epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Loss_trades', loss_trades.item(), epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Nature_Accuracy', nat_result.acc_cur,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Accuracy', adv_result.acc_cur,
-                                               epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"],
-                                               epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Loss_adv', loss_adv.item(), self._iter)
+                        self.writer.add_scalar('Train/Loss_nat', loss_nat.item(), self._iter)
+                        self.writer.add_scalar('Train/Loss_mart', loss_mart.item(), self._iter)
+                        self.writer.add_scalar('Train/Loss_trades', loss_trades.item(), self._iter)
+                        self.writer.add_scalar('Train/Nature_Accuracy', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Accuracy', adv_result.acc_cur * 100,
+                                               self._iter)
+                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
                 self._iter += 1

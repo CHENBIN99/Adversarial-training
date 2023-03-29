@@ -1,8 +1,9 @@
+import torch
 import timm
 from model import wideresnet, preactresnet
 
 
-def get_model(model_name, num_classes, dataset, device):
+def get_model(model_name, num_classes, dataset, device, pretrain=False, compile=False):
     if model_name == 'wrn3410':
         model = wideresnet.WideResNet(depth=34, widen_factor=10, num_classes=num_classes, dropRate=0.0,
                                       stride=1 if dataset != 'tinyimagenet' else 2)
@@ -11,8 +12,11 @@ def get_model(model_name, num_classes, dataset, device):
         model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if dataset != 'tinyimagenet' else 2)
         model.to(device)
     else:
-        model = timm.create_model(model_name, num_classes=num_classes)
+        model = timm.create_model(model_name, num_classes=num_classes, pretrained=pretrain)
         model.to(device)
+
+    if compile:
+        model = torch.compile(model)
 
     return model
 

@@ -32,19 +32,24 @@ class TrainerNature(TrainerBase):
                 optimizer.step()
 
                 # Validation during training
-                if self._iter % self.cfg.print_freq == 0:
+                if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
                     # clean data
                     with torch.no_grad():
                         nat_output = model(data)
-                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach() == label.cpu().numpy()).sum()
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
-                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()), nat_acc='{:.3f}'.format(nat_result.acc_cur))
-                    _tqdm.update(self.cfg.TRAIN.print_freq)
+                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
+                                      nat_acc='{:.3f}'.format(nat_result.acc_cur * 100))
+                    if not idx + 1 == len(train_loader):
+                        _tqdm.update(self.cfg.TRAIN.print_freq)
+                    else:
+                        _tqdm.update(len(train_loader) % self.cfg.TRAIN.print_freq)
 
                     if self.writer is not None:
-                        self.writer.add_scalar('Train/Loss', loss.item(), epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur, epoch * len(train_loader) + idx)
-                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"],
-                                               epoch * len(train_loader) + idx)
+                        self.writer.add_scalar('Train/Loss_nat', loss.item(), self._iter)
+                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
+                self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                 self._iter += 1

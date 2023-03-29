@@ -62,7 +62,7 @@ class TrainerFast(TrainerBase):
                     optimizer.step()
 
                     # Validation during training
-                    if self._iter % self.cfg.TRAIN.print_freq == 0:
+                    if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
                         # clean data
                         with torch.no_grad():
                             nat_output = model(data)
@@ -80,16 +80,19 @@ class TrainerFast(TrainerBase):
                         adv_result.update(adv_correct_num, n)
 
                         _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
-                                          nat_acc='{:.3f}'.format(nat_result.acc_cur),
-                                          rob_acc='{:.3f}'.format(adv_result.acc_cur))
-                        _tqdm.update(self.cfg.TRAIN.print_freq)
+                                          nat_acc='{:.3f}'.format(nat_result.acc_cur * 100),
+                                          rob_acc='{:.3f}'.format(adv_result.acc_cur * 100))
+                        if not idx + 1 == len(train_loader):
+                            _tqdm.update(self.cfg.TRAIN.print_freq)
+                        else:
+                            _tqdm.update(len(train_loader) % self.cfg.TRAIN.print_freq)
 
                         if self.writer is not None:
-                            self.writer.add_scalar('Train/Loss', loss.item(), epoch * len(train_loader) + idx)
-                            self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur,
-                                                   epoch * len(train_loader) + idx)
-                            self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy', adv_result.acc_cur,
-                                                   epoch * len(train_loader) + idx)
-                            self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"],
-                                                   epoch * len(train_loader) + idx)
+                            self.writer.add_scalar('Train/Loss_adv', loss.item(), self._iter)
+                            self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur * 100, self._iter)
+                            self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy',
+                                                   adv_result.acc_cur * 100,
+                                                   self._iter)
+                            self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
+                    self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                     self._iter += 1

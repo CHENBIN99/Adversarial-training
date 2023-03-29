@@ -3,20 +3,26 @@ TRAIN:
   seed: 0
 
   # Number of training epochs
-  epochs: 100
+  epochs: 60
 
   # Architecture name in TIMM
-  arch: 'wrn3410'
+  arch: 'resnet50'
 
   # SGD hyper-parameters
   lr: 0.1
   momentum: 0.9
-  weight_decay: 0.0002
-  lr_epochs: !!python/tuple [ 0, 75, 85, 95, 100 ]
+  weight_decay: 0.0005
+  lr_epochs: !!python/tuple [ 0, 20, 40, 60 ]
+  lr_values: !!python/tuple [ 0.1, 0.01, 0.001 ]
 
   # Print frequency, is used for both training and testing
   print_freq: 50
   save_ckp_every_epoch: True
+
+  # use pre-trained weight
+  pretrain: True
+  # compile the model, need Pytorch >= 2.0
+  compile: True
 
 ADV:
   # PGD attack
@@ -32,10 +38,14 @@ DATA:
   batch_size: 128
   image_size: 40
   crop_size: 32
+  padding: 4
   num_class: 10
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]
+
+  # data aug
+  aug: False
 
 SAVE:
   log: 'log'
