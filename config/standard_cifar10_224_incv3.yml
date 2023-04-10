@@ -6,7 +6,7 @@ TRAIN:
   epochs: 100
 
   # Architecture name in TIMM
-  arch: 'resnet18'
+  arch: 'inception_v3'
 
   # SGD hyper-parameters
   lr: 0.1
@@ -17,12 +17,12 @@ TRAIN:
 
   # Print frequency, is used for both training and testing
   print_freq: 50
-  save_ckp_every_epoch: True
+  save_ckp_every_epoch: False
 
   # use pre-trained weight
   pretrain: True
   # compile the model, need Pytorch >= 2.0
-  compile: True
+  compile: False
 
 ADV:
   TRAIN:
@@ -38,10 +38,10 @@ ADV:
 
 DATA:
   data_path: 'data'
-  workers: 10
+  workers: 4
   batch_size: 128
-  image_size: 40
-  crop_size: 32
+  image_size: 256
+  crop_size: 224
   num_class: 10
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
@@ -53,5 +53,3 @@ DATA:
 SAVE:
   log: 'log'
   checkpoint: 'checkpoint'
-
-

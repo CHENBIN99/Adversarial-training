@@ -24,8 +24,8 @@ class TrainerStandard(TrainerBase):
             for idx, (data, label) in enumerate(train_loader):
                 n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
-                attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.eps,
-                                                 self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
+                attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.TRAIN.eps,
+                                                 self.cfg.ADV.TRAIN.alpha, self.cfg.ADV.TRAIN.iters)
                 adv_data = attack_method(data, label)
                 adv_output = model(adv_data)
                 # Loss

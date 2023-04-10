@@ -22,6 +22,7 @@ def get_dataloader(cfg):
     else:
         if not cfg.DATA.aug:
             transform_train = transforms.Compose([
+                transforms.Resize(cfg.DATA.image_size),
                 transforms.RandomResizedCrop(cfg.DATA.crop_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
@@ -29,7 +30,8 @@ def get_dataloader(cfg):
             ])
         else:
             transform_train = transforms.Compose([
-                transforms.RandomCrop(cfg.DATA.crop_size, padding=cfg.DATA.padding),
+                transforms.Resize(cfg.DATA.image_size),
+                transforms.RandomResizedCrop(cfg.DATA.crop_size),
                 policy[cfg.dataset],
                 transforms.ToTensor(),
                 transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
