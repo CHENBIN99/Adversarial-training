@@ -103,7 +103,9 @@ def parse_config_file(args):
     config.root_path = get_project_path()
     config.log_path = os.path.join(config.root_path, config.SAVE.log, config.exp_name)
     config.ckp_path = os.path.join(config.root_path, config.SAVE.checkpoint, config.exp_name)
-    config.ADV.eps = config.ADV.eps / 255.
-    config.ADV.alpha = config.ADV.alpha / 255.
+    config.ADV.TRAIN.eps = config.ADV.TRAIN.eps / 255.
+    config.ADV.TRAIN.alpha = config.ADV.TRAIN.alpha / 255.
+    config.ADV.EVAL.eps = config.ADV.EVAL.eps / 255.
+    config.ADV.EVAL.alpha = config.ADV.EVAL.alpha / 255.
 
     return config

@@ -16,7 +16,7 @@ from utils.AverageMeter import AverageMeter
 
 
 class TrainerFree(TrainerBase):
-    def __init__(self, cfg, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss(), m=10):
+    def __init__(self, cfg, writer, device, loss_function=torch.nn.CrossEntropyLoss(), m=10):
         super(TrainerFree, self).__init__(cfg, writer, device, loss_function)
         self.m = m
         self.delta = torch.zeros(self.cfg.DATA.batch_size, 3, self.cfg.DATA.crop_size, self.cfg.DATA.crop_size,
@@ -32,7 +32,7 @@ class TrainerFree(TrainerBase):
                 data, label = data.to(self.device), label.to(self.device)
                 for i in range(self.m):
                     optimizer.zero_grad()
-                    adv_data = (data + delta).detach()
+                    adv_data = (data + self.delta).detach()
                     adv_data.requires_grad_()
                     adv_output = model(adv_data)
 
@@ -41,8 +41,8 @@ class TrainerFree(TrainerBase):
                     loss.backward()
                     optimizer.step()
                     grad = adv_data.grad.data
-                    delta = delta.detach() + self.cfg.ADV.eps * torch.sign(grad.detach())
-                    delta = torch.clamp(delta, -self.cfg.ADV.eps, self.cfg.ADV.eps)
+                    self.delta = self.delta.detach() + self.cfg.ADV.TRAIN.eps * torch.sign(grad.detach())
+                    self.delta = torch.clamp(self.delta, -self.cfg.ADV.TRAIN.eps, self.cfg.ADV.TRAIN.eps)
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
@@ -61,8 +61,8 @@ class TrainerFree(TrainerBase):
                     adv_result.update(adv_correct_num, n)
 
                     _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
-                                      nat_acc='{:.3f}'.format(nat_result.acc_cur * 100),
-                                      rob_acc='{:.3f}'.format(adv_result.acc_cur * 100))
+                                      nat_acc='{:.3f}%'.format(nat_result.acc_cur * 100),
+                                      rob_acc='{:.3f}%'.format(adv_result.acc_cur * 100))
                     if not idx + 1 == len(train_loader):
                         _tqdm.update(self.cfg.TRAIN.print_freq)
                     else:
@@ -70,8 +70,8 @@ class TrainerFree(TrainerBase):
 
                     if self.writer is not None:
                         self.writer.add_scalar('Train/Loss_adv', loss.item(), self._iter)
-                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur * 100, self._iter)
-                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy',
+                        self.writer.add_scalar('Train/Nat._Acc', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Acc',
                                                adv_result.acc_cur * 100,
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)

@@ -25,12 +25,16 @@ TRAIN:
   compile: True
 
 ADV:
-  # PGD attack
-  method: 'pgd'
-  eps: 8.0
-  alpha: 2.0
-  iters: 20
-  iters_eval: 10
+  TRAIN:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 10
+  EVAL:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 20
 
 DATA:
   data_path: 'data'

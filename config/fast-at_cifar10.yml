@@ -19,12 +19,16 @@ TRAIN:
   save_ckp_every_epoch: True
 
 ADV:
-  # PGD attack
-  method: 'pgd'
-  eps: 8.0
-  alpha: 2.0
-  iters: 20
-  iters_eval: 10
+  TRAIN:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 10
+  EVAL:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 20
   min_value: 0.
   max_value: 1.
 

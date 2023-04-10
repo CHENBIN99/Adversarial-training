@@ -23,29 +23,31 @@ class TrainerBase(object):
         self.best_robust_acc = 0.
         self._iter = 1
 
-    def _get_attack(self, model, epsilon, alpha, iters):
-        if self.cfg.ADV.method == 'pgd':
+    def _get_attack(self, model, attack_name, epsilon, alpha, iters):
+        if attack_name == 'pgd':
             return torchattacks.PGD(model=model, eps=epsilon, alpha=alpha, steps=iters, random_start=True)
-        elif self.cfg.ADV.method == 'fgsm':
+        elif attack_name == 'fgsm':
             return torchattacks.FGSM(model=model, eps=epsilon)
-        elif self.cfg.ADV.method == 'rfgsm':
+        elif attack_name == 'rfgsm':
             return torchattacks.RFGSM(model=model, eps=epsilon, alpha=alpha, steps=iters)
         else:
             raise 'no match attack method'
 
     def _get_attack_name(self, train=True):
-        if self.cfg.ADV.method == 'pgd':
-            if train:
-                return f'PGD-{self.cfg.ADV.iters}'
-            else:
-                return f'PGD-{self.cfg.ADV.iters_eval}'
-        elif self.cfg.ADV.method == 'fgsm':
-            return 'FGSM'
-        elif self.cfg.ADV.method == 'rfgsm':
-            if train:
-                return f'RFGSM-{self.cfg.ADV.iters}'
-            else:
-                return f'RFGSM-{self.cfg.ADV.iters_eval}'
+        if train:
+            if self.cfg.ADV.TRAIN.method == 'pgd':
+                return f'PGD-{self.cfg.ADV.TRAIN.iters}'
+            elif self.cfg.ADV.TRAIN.method == 'fgsm':
+                return 'FGSM'
+            elif self.cfg.ADV.TRAIN.method == 'rfgsm':
+                return f'RFGSM-{self.cfg.ADV.TRAIN.iters}'
+        else:
+            if self.cfg.ADV.EVAL.method == 'pgd':
+                return f'PGD-{self.cfg.ADV.EVAL.iters}'
+            elif self.cfg.ADV.EVAL.method == 'fgsm':
+                return 'FGSM'
+            elif self.cfg.ADV.EVAL.method == 'rfgsm':
+                return f'RFGSM-{self.cfg.ADV.EVAL.iters}'
 
     def adjust_learning_rate(self, opt, len_loader, epoch):
         """
@@ -107,10 +109,10 @@ class TrainerBase(object):
             # write to TensorBoard
             if self.writer is not None:
                 if self.cfg.method != 'nature':
-                    self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
-                    self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Accuracy', valid_adv_acc, epoch)
+                    self.writer.add_scalar('Valid/Nat._Acc', valid_acc, epoch)
+                    self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Acc', valid_adv_acc, epoch)
                 else:
-                    self.writer.add_scalar('Valid/Clean_acc', valid_acc, epoch)
+                    self.writer.add_scalar('Valid/Nat._Acc', valid_acc, epoch)
 
             # save checkpoint
             if self.cfg.TRAIN.save_ckp_every_epoch:
@@ -123,7 +125,8 @@ class TrainerBase(object):
     def valid(self, model, valid_loader):
         nat_result = AverageMeter()
         adv_result = AverageMeter()
-        attack_method = self._get_attack(model, self.cfg.ADV.eps, self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
+        attack_method = self._get_attack(model, self.cfg.ADV.EVAL.method, self.cfg.ADV.EVAL.eps,
+                                         self.cfg.ADV.EVAL.alpha, self.cfg.ADV.EVAL.iters)
 
         model.eval()
         with torch.no_grad():

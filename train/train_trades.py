@@ -51,8 +51,8 @@ class TrainerTrades(TrainerBase):
                     adv_result.update(adv_correct_num, n)
 
                     _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
-                                      nat_acc='{:.3f}'.format(nat_result.acc_cur * 100),
-                                      rob_acc='{:.3f}'.format(adv_result.acc_cur * 100))
+                                      nat_acc='{:.3f}%'.format(nat_result.acc_cur * 100),
+                                      rob_acc='{:.3f}%'.format(adv_result.acc_cur * 100))
                     if not idx + 1 == len(train_loader):
                         _tqdm.update(self.cfg.TRAIN.print_freq)
                     else:
@@ -61,8 +61,8 @@ class TrainerTrades(TrainerBase):
                     if self.writer is not None:
                         self.writer.add_scalar('Train/Loss_nat', loss_nat.item(), self._iter)
                         self.writer.add_scalar('Train/Loss_trades', loss_trades.item(), self._iter)
-                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur * 100, self._iter)
-                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_accuracy', adv_result.acc_cur * 100,
+                        self.writer.add_scalar('Train/Nat._Acc', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Acc', adv_result.acc_cur * 100,
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
                 self._iter += 1

@@ -40,8 +40,8 @@ class TrainerNature(TrainerBase):
                         astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
-                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
-                                      nat_acc='{:.3f}'.format(nat_result.acc_cur * 100))
+                    _tqdm.set_postfix(loss='{:.3f}%'.format(loss.item()),
+                                      nat_acc='{:.3f}%'.format(nat_result.acc_cur * 100))
                     if not idx + 1 == len(train_loader):
                         _tqdm.update(self.cfg.TRAIN.print_freq)
                     else:
@@ -49,7 +49,7 @@ class TrainerNature(TrainerBase):
 
                     if self.writer is not None:
                         self.writer.add_scalar('Train/Loss_nat', loss.item(), self._iter)
-                        self.writer.add_scalar('Train/Clean_acc', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar('Train/Nat._Acc', nat_result.acc_cur * 100, self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
                 self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                 self._iter += 1

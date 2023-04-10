@@ -11,31 +11,44 @@ TRAIN:
   # SGD hyper-parameters
   lr: 0.1
   momentum: 0.9
-  weight_decay: 0.0002
-  lr_epochs: !!python/tuple [ 0, 75, 85, 95, 100 ]
+  weight_decay: 0.0001
+  lr_epochs: !!python/tuple [ 0, 20, 22, 23, 24 ]
 
   # Print frequency, is used for both training and testing
   print_freq: 50
   save_ckp_every_epoch: True
 
+  # use pre-trained weight
+  pretrain: True
+  # compile the model, need Pytorch >= 2.0
+  compile: True
+
 ADV:
-  # PGD attack
-  method: 'pgd'
-  eps: 8.0
-  alpha: 2.0
-  iters: 20
-  iters_eval: 10
+  TRAIN:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 10
+  EVAL:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 20
 
 DATA:
   data_path: 'data'
   workers: 10
-  batch_size: 128
-  image_size: 40
-  crop_size: 32
+  batch_size: 256
+  image_size: 256
+  crop_size: 224
+  padding: 32
   num_class: 10
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]
+
+  # data aug
+  aug: False
 
 SAVE:
   log: 'log'

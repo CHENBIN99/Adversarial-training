@@ -72,8 +72,8 @@ class TrainerMartTrades(TrainerBase):
                         self.writer.add_scalar('Train/Loss_nat', loss_nat.item(), self._iter)
                         self.writer.add_scalar('Train/Loss_mart', loss_mart.item(), self._iter)
                         self.writer.add_scalar('Train/Loss_trades', loss_trades.item(), self._iter)
-                        self.writer.add_scalar('Train/Nature_Accuracy', nat_result.acc_cur * 100, self._iter)
-                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Accuracy', adv_result.acc_cur * 100,
+                        self.writer.add_scalar('Train/Nat._Acc', nat_result.acc_cur * 100, self._iter)
+                        self.writer.add_scalar(f'Train/{self._get_attack_name()}_Acc', adv_result.acc_cur * 100,
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
                 self._iter += 1
