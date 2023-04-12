@@ -9,11 +9,11 @@ TRAIN:
   arch: 'vit_tiny_patch16_224'
 
   # SGD hyper-parameters
-  lr: 0.1
+  lr: 0.01
   momentum: 0.9
   weight_decay: 0.0002
   lr_epochs: !!python/tuple [ 0, 75, 85, 95, 100 ]
-  lr_values: !!python/tuple [ 0.1, 0.01, 0.001 , 0.0001]
+  lr_values: !!python/tuple [ 0.01, 0.001, 0.0001 , 0.00001]
 
   # Print frequency, is used for both training and testing
   print_freq: 50
