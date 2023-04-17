@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 import glob
 from shutil import move
 import datetime
@@ -14,13 +15,13 @@ from torch.utils.data import DataLoader
 
 # fix random seed
 def same_seeds(seed):
-    torch.manual_seed(seed)                     # 固定随机种子（CPU）
-    if torch.cuda.is_available():               # 固定随机种子（GPU)
-        torch.cuda.manual_seed(seed)            # 为当前GPU设置
-        torch.cuda.manual_seed_all(seed)        # 为所有GPU设置
-    np.random.seed(seed)                        # 保证后续使用random函数时，产生固定的随机数
-    torch.backends.cudnn.benchmark = False      # GPU、网络结构固定，可设置为True
-    torch.backends.cudnn.deterministic = True   # 固定网络结构
+    torch.manual_seed(seed)  # 固定随机种子（CPU）
+    if torch.cuda.is_available():  # 固定随机种子（GPU)
+        torch.cuda.manual_seed(seed)  # 为当前GPU设置
+        torch.cuda.manual_seed_all(seed)  # 为所有GPU设置
+    np.random.seed(seed)  # 保证后续使用random函数时，产生固定的随机数
+    torch.backends.cudnn.benchmark = False  # GPU、网络结构固定，可设置为True
+    torch.backends.cudnn.deterministic = True  # 固定网络结构
 
 
 def get_exp_name(at_method, dataset, config):
@@ -109,3 +110,16 @@ def parse_config_file(args):
     config.ADV.EVAL.alpha = config.ADV.EVAL.alpha / 255.
 
     return config
+
+
+def initialize_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.constant_(m.bias, 0)
+        # 也可以判断是否为conv2d，使用相应的初始化方式
+    elif isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        # 是否为批归一化层
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)

@@ -104,7 +104,7 @@ class TrainerBase(object):
             else:
                 print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
                       f'nat_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
-                      f'best_epoch:{self.best_epoch}\tbest_nat_acc:{self.best_robust_acc * 100}%\n')
+                      f'best_epoch:{self.best_epoch}\tbest_rob_acc:{self.best_robust_acc * 100}%\n')
 
             # write to TensorBoard
             if self.writer is not None:

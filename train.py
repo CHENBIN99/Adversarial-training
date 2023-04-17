@@ -1,21 +1,15 @@
-import sys
-import os
 import argparse
-
-import timm
+import os
+import sys
 import torch.nn
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'model', 'classifiers')))
 
 from tensorboardX import SummaryWriter
-
-
-from model import wideresnet, preactresnet
-from utils.args import parser
 from utils.utils import *
 from dataloader import get_dataloader
-from model.get_model import get_model, get_static_model
+from model.registry import get_model, get_static_model
 
 
 def parse_args():
@@ -35,6 +29,7 @@ def parse_args():
     parser.add_argument('--gpu_id', default=0, type=int,
                         help='gpu id used for training.')
     return parser.parse_args()
+
 
 # Parase config file and initiate logging
 configs = parse_config_file(parse_args())
@@ -59,11 +54,8 @@ def main(cfg):
     # get dataloader
     train_dataloader, valid_dataloader = get_dataloader.get_dataloader(configs)
 
-    model = get_model(cfg.TRAIN.arch, cfg.DATA.num_class, cfg.dataset, cfg.DATA.crop_size, device, cfg.TRAIN.pretrain,
-                      cfg.TRAIN.compile)
-
-    if cfg.method == 'at_ens':
-        model_static = get_static_model(cfg.TRAIN.static_model_id, cfg.DATA.num_class, device)
+    model = get_model(cfg.TRAIN.arch, cfg.DATA.num_class, cfg.dataset, cfg.TRAIN.pretrain, cfg.TRAIN.compile)
+    model.to(device)
 
     # choose adversarial training method
     if cfg.method == 'nature':
@@ -76,36 +68,34 @@ def main(cfg):
         from train.train_at_free import TrainerFree
         trainer = TrainerFree(cfg, tb_writer, device, m=cfg.TRAIN.m)
     elif cfg.method == 'at_fast':
-        from train.train_fast_at import Trainer_Fast
-        trainer = Trainer_Fast(cfg, tb_writer, device, m=cfg.TRAIN.m, random_init=True)
+        from train.train_fast_at import TrainerFast
+        trainer = TrainerFast(cfg, tb_writer, device, m=cfg.TRAIN.m, random_init=True)
     elif cfg.method == 'at_ens':
-        from train.train_ens_adv import Trainer_Ens
-        trainer = Trainer_Ens(cfg, tb_writer, device)
+        from train.train_ens_adv import TrainerEns
+        model_static = get_static_model(cfg.TRAIN.static_model_id, cfg.DATA.num_class, device)
+        trainer = TrainerEns(cfg, tb_writer, device, static_model=model_static)
     elif cfg.method == 'trades':
-        from train.train_trades import Trainer_Trades
-        trainer = Trainer_Trades(cfg, tb_writer, device)
+        from train.train_trades import TrainerTrades
+        trainer = TrainerTrades(cfg, tb_writer, device)
     elif cfg.method == 'mart':
-        from train.train_mart import Trainer_Mart
-        trainer = Trainer_Mart(cfg, tb_writer, device)
+        from train.train_mart import TrainerMart
+        trainer = TrainerMart(cfg, tb_writer, device)
     elif cfg.method == 'mart_trades':
-        from train.train_mart_trades import Trainer_Mart_Trades
-        trainer = Trainer_Mart_Trades(cfg, tb_writer, device)
+        from train.train_mart_trades import TrainerMartTrades
+        trainer = TrainerMartTrades(cfg, tb_writer, device)
     elif cfg.method == 'ccg':
-        from train.train_ccg import Trainer_CCG
-        trainer = Trainer_CCG(cfg, tb_writer, device)
+        from train.train_ccg import TrainerCCG
+        trainer = TrainerCCG(cfg, tb_writer, device)
     elif cfg.method == 'ccg_trades':
-        from train.train_ccg_trades import Trainer_CCG_TRADES
-        trainer = Trainer_CCG_TRADES(cfg, tb_writer, device)
+        from train.train_ccg_trades import TrainerCCGTRADES
+        trainer = TrainerCCGTRADES(cfg, tb_writer, device)
     else:
         raise 'no match at_method'
 
-    if cfg.method != 'at_ens':
-        trainer.train(model, train_dataloader, valid_dataloader)
-    else:
-        trainer.train(model, model_static, train_dataloader, valid_dataloader)
+    trainer.train(model, train_dataloader, valid_dataloader)
 
     print('Train Finished!')
 
+
 if __name__ == '__main__':
     main(configs)
-

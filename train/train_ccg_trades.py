@@ -15,8 +15,8 @@ from utils.AverageMeter import AverageMeter
 
 
 class TrainerCCGTRADES(TrainerBase):
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        super(TrainerCCGTRADES, self).__init__(args, writer, attack_name, device, loss_function)
+    def __init__(self, args, writer, device, loss_function=torch.nn.CrossEntropyLoss()):
+        super(TrainerCCGTRADES, self).__init__(args, writer, device, loss_function)
 
     def train_one_epoch(self, model, train_loaders, optimizer, epoch):
         nat_result = AverageMeter()

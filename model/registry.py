@@ -1,27 +1,53 @@
 import torch
+
+from model import classifiers
 import timm
-from model import wideresnet, preactresnet, resnet
 
 
-def get_model(model_name, num_classes, dataset, input_size, device, pretrain=False, compile=False):
-    if model_name == 'wrn3410':
-        model = wideresnet.WideResNet(depth=34, widen_factor=10, num_classes=num_classes, dropRate=0.0,
-                                      stride=1 if dataset != 'tinyimagenet' else 2)
-        model.to(device)
-    elif model_name == 'preactresnet18':
-        model = preactresnet.PreActResNet18(num_classes=num_classes, stride=1 if dataset != 'tinyimagenet' else 2)
-        model.to(device)
-    elif model_name == 'resnet18' and dataset in ['cifar10', 'cifar100'] and input_size == 32:
-        model = resnet.ResNet18()
-        model.to(device)
+def get_model(model_name, num_classes, dataset_name, pre_train=False, compile=False):
+    if dataset_name in ['cifar10', 'cifar100']:
+        if model_name == 'resnet18':
+            model = classifiers.resnet.resnet18(num_classes=num_classes)
+        elif model_name == 'resnet34':
+            model = classifiers.resnet.resnet34(num_classes=num_classes)
+        elif model_name == 'resnet50':
+            model = classifiers.resnet.resnet50(num_classes=num_classes)
+        elif model_name == 'resnet101':
+            model = classifiers.resnet.resnet101(num_classes=num_classes)
+        elif model_name == 'resnet152':
+            model = classifiers.resnet.resnet152(num_classes=num_classes)
+        elif model_name == 'preactresnet18':
+            model = classifiers.preresnet.PreActResNet18(num_classes=num_classes)
+        elif model_name == 'preactresnet34':
+            model = classifiers.preresnet.PreActResNet34(num_classes=num_classes)
+        elif model_name == 'preactresnet50':
+            model = classifiers.preresnet.PreActResNet50(num_classes=num_classes)
+        elif model_name == 'preactresnet101':
+            model = classifiers.preresnet.PreActResNet50(num_classes=num_classes)
+        elif model_name == 'wrn16_1':
+            model = classifiers.wresnet.wrn_16_1(num_classes=num_classes)
+        elif model_name == 'wrn16_2':
+            model = classifiers.wresnet.wrn_16_2(num_classes=num_classes)
+        elif model_name == 'wrn40_1':
+            model = classifiers.wresnet.wrn_40_1(num_classes=num_classes)
+        elif model_name == 'wrn40_2':
+            model = classifiers.wresnet.wrn_40_2(num_classes=num_classes)
+        elif model_name == 'wrn34_10':
+            model = classifiers.wresnet.wrn_34_10(num_classes=num_classes)
+        elif model_name == 'inc_v3':
+            model = classifiers.inception_v3.inception_v3_cifar(num_classes=num_classes)
+        else:
+            raise NotImplemented
+    elif dataset_name in ['imagenet']:
+        model = timm.create_model(model_name, pretrained=pre_train, num_classes=1000)
     else:
-        model = timm.create_model(model_name, num_classes=num_classes, pretrained=pretrain)
-        model.to(device)
+        raise NotImplemented
 
     if compile:
         model = torch.compile(model)
 
     return model
+
 
 def get_static_model(static_model_id, num_class, device):
     if static_model_id == 1:

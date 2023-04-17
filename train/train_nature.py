@@ -40,7 +40,7 @@ class TrainerNature(TrainerBase):
                         astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
-                    _tqdm.set_postfix(loss='{:.3f}%'.format(loss.item()),
+                    _tqdm.set_postfix(loss='{:.3f}'.format(loss.item()),
                                       nat_acc='{:.3f}%'.format(nat_result.acc_cur * 100))
                     if not idx + 1 == len(train_loader):
                         _tqdm.update(self.cfg.TRAIN.print_freq)
