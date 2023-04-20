@@ -75,5 +75,6 @@ class TrainerFree(TrainerBase):
                                                adv_result.acc_cur * 100,
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
-                self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                 self._iter += 1
+                self.scheduler.step()
+

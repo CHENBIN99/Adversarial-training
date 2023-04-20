@@ -49,23 +49,38 @@ class TrainerBase(object):
             elif self.cfg.ADV.EVAL.method == 'rfgsm':
                 return f'RFGSM-{self.cfg.ADV.EVAL.iters}'
 
-    def adjust_learning_rate(self, opt, len_loader, epoch):
-        """
-        Adjust the learning rate during training.
-        :param opt: optimizer
-        :param len_loader: the total number of mini-batch
-        :param epoch: current epoch
-        :return: None
-        """
-        num_milestone = len(self.cfg.TRAIN.lr_epochs)
+    # def adjust_learning_rate(self, opt, len_loader, epoch):
+    #     """
+    #     Adjust the learning rate during training.
+    #     :param opt: optimizer
+    #     :param len_loader: the total number of mini-batch
+    #     :param epoch: current epoch
+    #     :return: None
+    #     """
+    #     num_milestone = len(self.cfg.TRAIN.lr_epochs)
+    #
+    #     for i in range(0, num_milestone - 1):
+    #         if epoch == self.cfg.TRAIN.lr_epochs[i]:
+    #             self.cfg.TRAIN.lr = self.cfg.TRAIN.lr_values[i]
+    #             break
+    #
+    #     for param_group in opt.param_groups:
+    #         param_group["lr"] = self.cfg.TRAIN.lr
 
-        for i in range(0, num_milestone - 1):
-            if epoch == self.cfg.TRAIN.lr_epochs[i]:
-                self.cfg.TRAIN.lr = self.cfg.TRAIN.lr_values[i]
-                break
+    def get_lr_scheduler(self, opt, scheduler_name, len_dataloader):
+        if scheduler_name == 'MultiStepLR':
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=self.cfg.TRAIN.milestone * len_dataloader,
+                                                             gamma=self.cfg.TRAIN.gamma)
+        elif scheduler_name == 'CosineAnnealingLR':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cfg.TRAIN.epochs * len_dataloader,
+                                                                   eta_min=1e-6)
+        elif scheduler_name == 'CosineAnnealingWarmRestarts':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(opt, T_0=2 * len_dataloader,
+                                                                             T_mult=2 * len_dataloader)
+        else:
+            raise NotImplemented
 
-        for param_group in opt.param_groups:
-            param_group["lr"] = self.cfg.TRAIN.lr
+        return scheduler
 
     def save_checkpoint(self, model, epoch, is_best=False):
         if not is_best:
@@ -77,6 +92,7 @@ class TrainerBase(object):
     def train(self, model, train_loader, valid_loader):
         opt = torch.optim.SGD(model.parameters(), self.cfg.TRAIN.lr, weight_decay=self.cfg.TRAIN.weight_decay,
                               momentum=self.cfg.TRAIN.momentum)
+        self.scheduler = self.get_lr_scheduler(opt, self.cfg.TRAIN.lr_scheduler_name, len(train_loader))
 
         for epoch in range(0, self.cfg.TRAIN.epochs):
             # training

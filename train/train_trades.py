@@ -66,4 +66,5 @@ class TrainerTrades(TrainerBase):
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
                 self._iter += 1
+                self.scheduler.step()
 

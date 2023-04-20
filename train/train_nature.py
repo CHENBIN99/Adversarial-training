@@ -51,5 +51,9 @@ class TrainerNature(TrainerBase):
                         self.writer.add_scalar('Train/Loss_nat', loss.item(), self._iter)
                         self.writer.add_scalar('Train/Nat._Acc', nat_result.acc_cur * 100, self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
-                self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                 self._iter += 1
+
+                if self.cfg.TRAIN.lr_scheduler_name != 'ReduceLROnPlateau':
+                    self.scheduler.step()
+                else:
+                    self.scheduler.step(loss)

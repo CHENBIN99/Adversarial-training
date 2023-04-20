@@ -91,8 +91,8 @@ class TrainerCCGTRADES(TrainerBase):
                         self.writer.add_scalar(f'Train/{self._get_attack_name()}_Acc', adv_result.acc_cur * 100,
                                                self._iter)
                         self.writer.add_scalar('Train/Lr', optimizer.param_groups[0]["lr"], self._iter)
-                self.adjust_learning_rate(optimizer, len(train_loader), epoch)
                 self._iter += 1
+                self.scheduler.step()
 
     def _jensen_shannon_div(self, logit1, logit2, T=1.):
         prob1 = F.softmax(logit1 / T, dim=1)
