@@ -6,7 +6,7 @@ TRAIN:
   epochs: 200
 
   # Architecture name in TIMM
-  arch: 'wrn34_10'
+  arch: 'preactresnet18'
 
   # SGD hyper-parameters
   lr: 0.1
@@ -22,7 +22,7 @@ TRAIN:
   # use pre-trained weight
   pretrain: True
   # compile the model, need Pytorch >= 2.0
-  compile: False
+  compile: True
 
 ADV:
   TRAIN:
@@ -43,7 +43,7 @@ DATA:
   image_size: 40
   crop_size: 32
   padding: 4
-  num_class: 10
+  num_class: 100
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]

@@ -6,7 +6,7 @@ TRAIN:
   epochs: 200
 
   # Architecture name in TIMM
-  arch: 'wrn34_10'
+  arch: 'inc_v3'
 
   # SGD hyper-parameters
   lr: 0.1
@@ -42,8 +42,8 @@ DATA:
   batch_size: 128
   image_size: 40
   crop_size: 32
-  padding: 4
   num_class: 10
+  padding: 4
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]

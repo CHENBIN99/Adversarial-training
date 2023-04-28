@@ -3,7 +3,7 @@ TRAIN:
   seed: 0
 
   # Number of training epochs
-  epochs: 60
+  epochs: 200
 
   # Architecture name in TIMM
   arch: 'wrn40_1'
@@ -12,8 +12,8 @@ TRAIN:
   lr: 0.1
   momentum: 0.9
   weight_decay: 0.0005
-  lr_epochs: !!python/tuple [ 0, 20, 40, 60 ]
-  lr_values: !!python/tuple [ 0.1, 0.01, 0.001 ]
+
+  lr_scheduler_name: 'CosineAnnealingLR'
 
   # Print frequency, is used for both training and testing
   print_freq: 50
@@ -43,6 +43,7 @@ DATA:
   image_size: 40
   crop_size: 32
   num_class: 10
+  padding: 4
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]

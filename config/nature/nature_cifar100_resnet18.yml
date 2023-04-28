@@ -3,17 +3,17 @@ TRAIN:
   seed: 0
 
   # Number of training epochs
-  epochs: 100
+  epochs: 200
 
   # Architecture name in TIMM
-  arch: 'swin_tiny_patch4_window7_224'
+  arch: 'resnet18'
 
   # SGD hyper-parameters
-  lr: 0.01
+  lr: 0.1
   momentum: 0.9
-  weight_decay: 0.0002
-  lr_epochs: !!python/tuple [ 0, 75, 85, 95, 100 ]
-  lr_values: !!python/tuple [ 0.01, 0.001, 0.0001 , 0.00001]
+  weight_decay: 0.0005
+
+  lr_scheduler_name: 'CosineAnnealingLR'
 
   # Print frequency, is used for both training and testing
   print_freq: 50
@@ -38,11 +38,12 @@ ADV:
 
 DATA:
   data_path: 'data'
-  workers: 4
+  workers: 10
   batch_size: 128
-  image_size: 256
-  crop_size: 224
-  num_class: 10
+  image_size: 40
+  crop_size: 32
+  num_class: 100
+  padding: 4
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]

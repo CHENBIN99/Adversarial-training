@@ -23,9 +23,9 @@ class TrainerNature(TrainerBase):
             for idx, (data, label) in enumerate(train_loader):
                 n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
-                adv_output = model(data)
+                nat_output = model(data)
                 # Loss
-                loss = self.loss_fn(adv_output, label)
+                loss = self.loss_fn(nat_output, label)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -34,8 +34,6 @@ class TrainerNature(TrainerBase):
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
                     # clean data
-                    with torch.no_grad():
-                        nat_output = model(data)
                     nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
                         astype(int).sum()
                     nat_result.update(nat_correct_num, n)

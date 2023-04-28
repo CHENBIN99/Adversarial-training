@@ -49,27 +49,9 @@ class TrainerBase(object):
             elif self.cfg.ADV.EVAL.method == 'rfgsm':
                 return f'RFGSM-{self.cfg.ADV.EVAL.iters}'
 
-    # def adjust_learning_rate(self, opt, len_loader, epoch):
-    #     """
-    #     Adjust the learning rate during training.
-    #     :param opt: optimizer
-    #     :param len_loader: the total number of mini-batch
-    #     :param epoch: current epoch
-    #     :return: None
-    #     """
-    #     num_milestone = len(self.cfg.TRAIN.lr_epochs)
-    #
-    #     for i in range(0, num_milestone - 1):
-    #         if epoch == self.cfg.TRAIN.lr_epochs[i]:
-    #             self.cfg.TRAIN.lr = self.cfg.TRAIN.lr_values[i]
-    #             break
-    #
-    #     for param_group in opt.param_groups:
-    #         param_group["lr"] = self.cfg.TRAIN.lr
-
     def get_lr_scheduler(self, opt, scheduler_name, len_dataloader):
         if scheduler_name == 'MultiStepLR':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=self.cfg.TRAIN.milestone * len_dataloader,
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[x * len_dataloader for x in self.cfg.TRAIN.milestone],
                                                              gamma=self.cfg.TRAIN.gamma)
         elif scheduler_name == 'CosineAnnealingLR':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cfg.TRAIN.epochs * len_dataloader,
