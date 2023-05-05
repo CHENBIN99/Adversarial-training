@@ -113,7 +113,7 @@ class TrainerBase(object):
                     self.writer.add_scalar('Valid/Nat._Acc', valid_acc, epoch)
 
             # save checkpoint
-            if self.cfg.TRAIN.save_ckp_every_epoch:
+            if self.cfg.TRAIN.save_ckp_freq != -1 and epoch % self.cfg.TRAIN.save_ckp_freq == 0:
                 self.save_checkpoint(model, epoch)
 
     @abstractmethod

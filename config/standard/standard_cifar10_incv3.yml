@@ -19,7 +19,7 @@ TRAIN:
 
   # Print frequency, is used for both training and testing
   print_freq: 50
-  save_ckp_every_epoch: False
+  save_ckp_freq: -1
 
   # use pre-trained weight
   pretrain: True
