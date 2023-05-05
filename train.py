@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+
 import torch.nn
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
@@ -10,6 +11,7 @@ from tensorboardX import SummaryWriter
 from utils.utils import *
 from dataloader import get_dataloader
 from model.registry import get_model, get_static_model
+import train
 
 
 def parse_args():
@@ -59,36 +61,26 @@ def main(cfg):
 
     # choose adversarial training method
     if cfg.method == 'nature':
-        from train.train_nature import TrainerNature
-        trainer = TrainerNature(cfg, tb_writer, device)
+        trainer = train.TrainerNature(cfg, tb_writer, device)
     elif cfg.method == 'standard':
-        from train.train_standard import TrainerStandard
-        trainer = TrainerStandard(cfg, tb_writer, device)
+        trainer = train.TrainerStandard(cfg, tb_writer, device)
     elif cfg.method == 'at_free':
-        from train.train_at_free import TrainerFree
-        trainer = TrainerFree(cfg, tb_writer, device, m=cfg.TRAIN.m)
+        trainer = train.TrainerFree(cfg, tb_writer, device, m=cfg.TRAIN.m)
     elif cfg.method == 'at_fast':
-        from train.train_fast_at import TrainerFast
-        trainer = TrainerFast(cfg, tb_writer, device, m=cfg.TRAIN.m, random_init=True)
+        trainer = train.TrainerFast(cfg, tb_writer, device, m=cfg.TRAIN.m, random_init=True)
     elif cfg.method == 'at_ens':
-        from train.train_ens_adv import TrainerEns
         model_static = get_static_model(cfg.TRAIN.static_model_id, cfg.DATA.num_class, device)
-        trainer = TrainerEns(cfg, tb_writer, device, static_model=model_static)
+        trainer = train.TrainerEns(cfg, tb_writer, device, static_model=model_static)
     elif cfg.method == 'trades':
-        from train.train_trades import TrainerTrades
-        trainer = TrainerTrades(cfg, tb_writer, device)
+        trainer = train.TrainerTrades(cfg, tb_writer, device)
     elif cfg.method == 'mart':
-        from train.train_mart import TrainerMart
-        trainer = TrainerMart(cfg, tb_writer, device)
+        trainer = train.TrainerMart(cfg, tb_writer, device)
     elif cfg.method == 'mart_trades':
-        from train.train_mart_trades import TrainerMartTrades
-        trainer = TrainerMartTrades(cfg, tb_writer, device)
+        trainer = train.TrainerMartTrades(cfg, tb_writer, device)
     elif cfg.method == 'ccg':
-        from train.train_ccg import TrainerCCG
-        trainer = TrainerCCG(cfg, tb_writer, device)
+        trainer = train.TrainerCCG(cfg, tb_writer, device)
     elif cfg.method == 'ccg_trades':
-        from train.train_ccg_trades import TrainerCCGTRADES
-        trainer = TrainerCCGTRADES(cfg, tb_writer, device)
+        trainer = train.TrainerCCGTRADES(cfg, tb_writer, device)
     else:
         raise 'no match at_method'
 
