@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.utils import *
 from train.train_base import TrainerBase
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerStandard(TrainerBase):
@@ -27,13 +28,26 @@ class TrainerStandard(TrainerBase):
                 attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.TRAIN.eps,
                                                  self.cfg.ADV.TRAIN.alpha, self.cfg.ADV.TRAIN.iters)
                 adv_data = attack_method(data, label)
-                adv_output = model(adv_data)
-                # Loss
-                loss = self.loss_fn(adv_output, label)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # Forward
+                if self.amp:
+                    with autocast():
+                        adv_output = model(adv_data)
+                        loss = self.loss_fn(adv_output, label)
+                else:
+                    adv_output = model(adv_data)
+                    loss = self.loss_fn(adv_output, label)
+
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

@@ -9,6 +9,7 @@ from tqdm import tqdm
 from utils.utils import *
 from abc import ABC, abstractmethod
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import GradScaler
 
 
 class TrainerBase(object):
@@ -22,6 +23,9 @@ class TrainerBase(object):
         self.best_clean_acc = 0.
         self.best_robust_acc = 0.
         self._iter = 1
+        self.amp = cfg.TRAIN.amp
+        if self.amp:
+            self.scaler = GradScaler(enabled=self.amp)
 
     def _get_attack(self, model, attack_name, epsilon, alpha, iters):
         if attack_name == 'pgd':

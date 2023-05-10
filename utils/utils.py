@@ -40,15 +40,15 @@ def get_exp_name(at_method, dataset, config):
     elif at_method == 'at_ens':
         exp_name = f'EnsAT_static-{config.static_model}'
     elif at_method == 'trades':
-        exp_name = f'TRADES_beta-{config.trades_beta}'
+        exp_name = f'TRADES_beta-{config.TRAIN.trades_beta}'
     elif at_method == 'mart':
-        exp_name = f'MART_beta-{config.mart_beta}'
+        exp_name = f'MART_beta-{config.TRAIN.mart_beta}'
     elif at_method == 'mart_trades':
-        exp_name = f'MART_beta-{config.mart_beta}_TRADES_beta-{config.trades_beta}'
+        exp_name = f'MART_beta-{config.TRAIN.mart_beta}_TRADES_beta-{config.TRAIN.trades_beta}'
     elif at_method == 'ccg':
         exp_name = f'CCG'
     elif at_method == 'ccg_trades':
-        exp_name = f'CCG_TRADES_beta-{config.trades_beta}'
+        exp_name = f'CCG_TRADES_beta-{config.TRAIN.trades_beta}'
     else:
         raise 'no match at method'
 

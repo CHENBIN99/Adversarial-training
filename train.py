@@ -1,12 +1,6 @@
+import init_path
 import argparse
-import os
-import sys
-
 import torch.nn
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'model', 'classifiers')))
-
 from tensorboardX import SummaryWriter
 from utils.utils import *
 from dataloader import get_dataloader

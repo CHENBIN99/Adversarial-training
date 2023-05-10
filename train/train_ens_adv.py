@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.utils import *
 from train.train_base import TrainerBase
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerEns(TrainerBase):
@@ -37,19 +38,31 @@ class TrainerEns(TrainerBase):
                                                  self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
                 adv_data = attack_method(data, label)
 
-                # training
-                nat_output = model(data)
-                nat_loss = self.loss_fn(nat_output, label)
+                # Forward
+                if self.amp:
+                    with autocast():
+                        nat_output = model(data)
+                        adv_output = model(adv_data)
+                        nat_loss = self.loss_fn(nat_output, label)
+                        adv_loss = self.loss_fn(adv_output, label)
+                        loss = 0.5 * (nat_loss + adv_loss)
+                else:
+                    nat_output = model(data)
+                    adv_output = model(adv_data)
+                    nat_loss = self.loss_fn(nat_output, label)
+                    adv_loss = self.loss_fn(adv_output, label)
+                    loss = 0.5 * (nat_loss + adv_loss)
 
-                adv_output = model(adv_data)
-                adv_loss = self.loss_fn(adv_output, label)
-
-                # combine
-                loss = 0.5 * (nat_loss + adv_loss)
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

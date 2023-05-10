@@ -3,7 +3,7 @@ TRAIN:
   seed: 0
 
   # Number of training epochs
-  epochs: 100
+  epochs: 200
 
   # Architecture name in TIMM
   arch: 'wrn3410'
@@ -17,6 +17,10 @@ TRAIN:
   # Print frequency, is used for both training and testing
   print_freq: 50
   save_ckp_freq: -1
+
+  # CCG
+  lamda: 1.0
+  T: 1.0
 
 ADV:
   TRAIN:

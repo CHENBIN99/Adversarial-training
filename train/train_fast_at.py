@@ -14,6 +14,7 @@ from utils.utils import *
 from train.train_base import TrainerBase
 from torch.autograd import Variable
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerFast(TrainerBase):
@@ -40,9 +41,17 @@ class TrainerFast(TrainerBase):
                     noise_batch = Variable(self.global_noise_data[0:data.size(0)], requires_grad=True)
                     adv_data = data + noise_batch
                     adv_data.clamp_(self.cfg.ADV.min_value, self.cfg.ADV.max_value)
-                    adv_output = model(adv_data)
-                    loss = self.loss_fn(adv_output, label)
-                    loss.backward()
+
+                    # Forward
+                    if self.amp:
+                        with autocast():
+                            adv_output = model(adv_data)
+                            loss = self.loss_fn(adv_output, label)
+                            loss.backward()
+                    else:
+                        adv_output = model(adv_data)
+                        loss = self.loss_fn(adv_output, label)
+                        loss.backward()
 
                     # Update the noise for the next iteration
                     pert = noise_batch.grad * self.cfg.ADV.epsilon * 1.25
@@ -56,10 +65,16 @@ class TrainerFast(TrainerBase):
                     adv_output = model(adv_data)
                     loss = self.loss_fn(adv_output, label)
 
-                    # compute gradient and do SGD step
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
+                    # Backward
+                    if self.amp:
+                        optimizer.zero_grad()
+                        self.scaler.scale(loss).backward()
+                        self.scaler.step(optimizer)
+                        self.scaler.update()
+                    else:
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
 
                     # Validation during training
                     if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

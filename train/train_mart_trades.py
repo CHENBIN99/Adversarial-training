@@ -13,6 +13,7 @@ from train.train_base import TrainerBase
 from adv_lib.trades_lib import *
 from adv_lib.mart_lib import *
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerMartTrades(TrainerBase):
@@ -28,20 +29,53 @@ class TrainerMartTrades(TrainerBase):
                 n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
 
-                # MART Loss
-                loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label, optimizer=optimizer,
-                                                          step_size=self.args.alpha, epsilon=self.args.epsilon,
-                                                          perturb_steps=self.args.iters, beta=self.args.mart_beta,
-                                                          distance='l_inf', device=self.device)
-                # TRADES Loss
-                loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label, optimizer=opt,
-                                                              step_size=self.args.alpha, epsilon=self.args.epsilon,
-                                                              perturb_steps=self.args.iters, beta=self.args.trades_beta,
+                # Forward
+                if self.amp:
+                    with autocast():
+                        loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label,
+                                                                  optimizer=optimizer,
+                                                                  step_size=self.cfg.ADV.TRAIN.alpha,
+                                                                  epsilon=self.cfg.ADV.TRAIN.eps,
+                                                                  perturb_steps=self.cfg.ADV.TRAIN.iters,
+                                                                  beta=self.cfg.TRAIN.mart_beta,
+                                                                  distance='l_inf')
+                        # TRADES Loss
+                        loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label,
+                                                                      optimizer=optimizer,
+                                                                      step_size=self.cfg.ADV.TRAIN.alpha,
+                                                                      epsilon=self.cfg.ADV.TRAIN.eps,
+                                                                      perturb_steps=self.cfg.ADV.TRAIN.iters,
+                                                                      beta=self.cfg.TRAIN.mart_beta,
+                                                                      distance='l_inf')
+                        loss = loss_adv + loss_mart + loss_trades
+                else:
+                    loss_adv, loss_mart, adv_data = mart_loss(model=model, x_natural=data, y=label,
+                                                              optimizer=optimizer,
+                                                              step_size=self.cfg.ADV.TRAIN.alpha,
+                                                              epsilon=self.cfg.ADV.TRAIN.eps,
+                                                              perturb_steps=self.cfg.ADV.TRAIN.iters,
+                                                              beta=self.cfg.TRAIN.mart_beta,
                                                               distance='l_inf')
-                loss = loss_adv + loss_mart + loss_trades
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                    # TRADES Loss
+                    loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label,
+                                                                  optimizer=optimizer,
+                                                                  step_size=self.cfg.ADV.TRAIN.alpha,
+                                                                  epsilon=self.cfg.ADV.TRAIN.eps,
+                                                                  perturb_steps=self.cfg.ADV.TRAIN.iters,
+                                                                  beta=self.cfg.TRAIN.mart_beta,
+                                                                  distance='l_inf')
+                    loss = loss_adv + loss_mart + loss_trades
+
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

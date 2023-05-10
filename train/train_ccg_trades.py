@@ -12,6 +12,7 @@ from utils.utils import *
 from train.train_base import TrainerBase
 from adv_lib.trades_lib import *
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerCCGTRADES(TrainerBase):
@@ -36,28 +37,40 @@ class TrainerCCGTRADES(TrainerBase):
                 labels = labels.to(self.device)
                 data_pair = torch.cat([data_aug1, data_aug2], dim=0)
 
-                attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.eps,
-                                                 self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
+                if self.amp:
+                    with autocast():
+                        loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data_pair, y=labels,
+                                                                      optimizer=optimizer, step_size=self.cfg.ADV.alpha,
+                                                                      epsilon=self.cfg.ADV.eps,
+                                                                      perturb_steps=self.cfg.ADV.iters,
+                                                                      beta=self.cfg.TRAIN.beta, distance='l_inf')
+                        outputs_adv1, outputs_adv2 = adv_output.chunk(2)
+                        loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2,
+                                                                                   self.cfg.TRAIN.T)
+                        loss = loss_nat + loss_trades + loss_con
 
-                adv_data = attack_method(data_pair, labels.repeat(2))
-                adv_output = model(adv_data)
 
-                # Loss
-                loss_ce = self.loss_fn(adv_output, labels.repeat(2))
-                outputs_adv1, outputs_adv2 = adv_output.chunk(2)
-                loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2, self.cfg.TRAIN.T)
+                else:
+                    loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data_pair, y=labels,
+                                                                  optimizer=optimizer, step_size=self.cfg.ADV.alpha,
+                                                                  epsilon=self.cfg.ADV.eps,
+                                                                  perturb_steps=self.cfg.ADV.iters,
+                                                                  beta=self.cfg.TRAIN.beta, distance='l_inf')
+                    outputs_adv1, outputs_adv2 = adv_output.chunk(2)
+                    loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2,
+                                                                               self.cfg.TRAIN.T)
+                    loss = loss_nat + loss_trades + loss_con
 
-                loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data_pair, y=labels.repeat(2),
-                                                              optimizer=optimizer, step_size=self.cfg.ADV.alpha,
-                                                              epsilon=self.cfg.ADV.epsilon,
-                                                              perturb_steps=self.cfg.ADV.iters,
-                                                              beta=self.cfg.TRAIN.trades_beta, distance='l_inf')
-
-                loss = loss_ce + loss_con + loss_trades
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from utils.utils import *
 from train.train_base import TrainerBase
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerCCG(TrainerBase):
@@ -38,19 +39,35 @@ class TrainerCCG(TrainerBase):
 
                 attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.eps,
                                                  self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
-
                 adv_data = attack_method(data_pair, labels.repeat(2))
-                adv_output = model(adv_data)
 
-                # Loss
-                loss_ce = self.loss_fn(adv_output, labels.repeat(2))
-                outputs_adv1, outputs_adv2 = adv_output.chunk(2)
-                loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2, self.cfg.TRAIN.T)
-                loss = loss_ce + loss_con
+                # Forward
+                if self.amp:
+                    with autocast():
+                        adv_output = model(adv_data)
+                        loss_ce = self.loss_fn(adv_output, labels.repeat(2))
+                        outputs_adv1, outputs_adv2 = adv_output.chunk(2)
+                        loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2,
+                                                                                   self.cfg.TRAIN.T)
+                        loss = loss_ce + loss_con
+                else:
+                    adv_output = model(adv_data)
+                    loss_ce = self.loss_fn(adv_output, labels.repeat(2))
+                    outputs_adv1, outputs_adv2 = adv_output.chunk(2)
+                    loss_con = self.cfg.TRAIN.lamda * self._jensen_shannon_div(outputs_adv1, outputs_adv2,
+                                                                               self.cfg.TRAIN.T)
+                    loss = loss_ce + loss_con
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

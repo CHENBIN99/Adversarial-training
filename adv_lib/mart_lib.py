@@ -5,7 +5,8 @@ from torch.autograd import Variable
 
 
 def mart_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, perturb_steps=10, beta=6.0,
-              distance='l_inf', device=torch.device('cuda')):
+              distance='l_inf'):
+    device = x_natural.device
     kl = nn.KLDivLoss(reduction='none')
     model.eval()
     batch_size = len(x_natural)

@@ -11,6 +11,7 @@ from train.train_base import TrainerBase
 from adv_lib.trades_lib import *
 from tqdm import tqdm
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerTrades(TrainerBase):
@@ -25,14 +26,34 @@ class TrainerTrades(TrainerBase):
             for idx, (data, label) in enumerate(train_loader):
                 n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
-                loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label, optimizer=optimizer,
-                                                              step_size=self.cfg.ADV.alpha, epsilon=self.cfg.ADV.eps,
-                                                              perturb_steps=self.cfg.ADV.iters,
-                                                              beta=self.cfg.TRAIN.beta, distance='l_inf')
-                loss = loss_nat + loss_trades
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+
+                # Forward
+                if self.amp:
+                    with autocast():
+                        loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label,
+                                                                      optimizer=optimizer, step_size=self.cfg.ADV.alpha,
+                                                                      epsilon=self.cfg.ADV.eps,
+                                                                      perturb_steps=self.cfg.ADV.iters,
+                                                                      beta=self.cfg.TRAIN.beta, distance='l_inf')
+                        loss = loss_nat + loss_trades
+                else:
+                    loss_nat, loss_trades, adv_data = trades_loss(model=model, x_natural=data, y=label,
+                                                                  optimizer=optimizer, step_size=self.cfg.ADV.alpha,
+                                                                  epsilon=self.cfg.ADV.eps,
+                                                                  perturb_steps=self.cfg.ADV.iters,
+                                                                  beta=self.cfg.TRAIN.beta, distance='l_inf')
+                    loss = loss_nat + loss_trades
+
+                # Backward
+                if self.amp:
+                    with autocast():
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):

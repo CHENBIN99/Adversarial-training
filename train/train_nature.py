@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.utils import *
 from train.train_base import TrainerBase
 from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import autocast as autocast
 
 
 class TrainerNature(TrainerBase):
@@ -23,13 +24,26 @@ class TrainerNature(TrainerBase):
             for idx, (data, label) in enumerate(train_loader):
                 n = data.size(0)
                 data, label = data.to(self.device), label.to(self.device)
-                nat_output = model(data)
-                # Loss
-                loss = self.loss_fn(nat_output, label)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # Forward
+                if self.amp:
+                    with autocast():
+                        nat_output = model(data)
+                        loss = self.loss_fn(nat_output, label)
+                else:
+                    nat_output = model(data)
+                    loss = self.loss_fn(nat_output, label)
+
+                # Backward
+                if self.amp:
+                    optimizer.zero_grad()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                else:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
                 # Validation during training
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
