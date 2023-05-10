@@ -6,27 +6,25 @@
 
 ## File Structure
 
-> .
-> ├── adv_lib
-> ├── checkpoint
-> ├── config
-> │   ├── ccg
-> │   ├── free-at
-> │   ├── mart
-> │   ├── nature
-> │   ├── standard
-> │   └── trades
-> ├── data
-> ├── dataloader
-> ├── log
-> ├── model
-> │   ├── classifiers
-> ├── script
-> ├── static_checkpoint
-> ├── train
-> └── utils
-
-
+> . \
+> ├── adv_lib  
+> ├── checkpoint  
+> ├── config  
+> │   ├── ccg  
+> │   ├── free-at  
+> │   ├── mart  
+> │   ├── nature  
+> │   ├── standard  
+> │   └── trades  
+> ├── data  
+> ├── dataloader  
+> ├── log  
+> ├── model  
+> │   ├── classifiers  
+> ├── script  
+> ├── static_checkpoint  
+> ├── train  
+> └── utils  
 
 
 ## Usage
