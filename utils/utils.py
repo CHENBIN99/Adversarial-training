@@ -1,10 +1,13 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 import glob
 from shutil import move
 import datetime
 import time
+from easydict import EasyDict
+import yaml
 
 import torchvision
 from torch.utils.data import DataLoader
@@ -12,47 +15,44 @@ from torch.utils.data import DataLoader
 
 # fix random seed
 def same_seeds(seed):
-    torch.manual_seed(seed)                     # 固定随机种子（CPU）
-    if torch.cuda.is_available():               # 固定随机种子（GPU)
-        torch.cuda.manual_seed(seed)            # 为当前GPU设置
-        torch.cuda.manual_seed_all(seed)        # 为所有GPU设置
-    np.random.seed(seed)                        # 保证后续使用random函数时，产生固定的随机数
-    torch.backends.cudnn.benchmark = False      # GPU、网络结构固定，可设置为True
-    torch.backends.cudnn.deterministic = True   # 固定网络结构
+    torch.manual_seed(seed)  # 固定随机种子（CPU）
+    if torch.cuda.is_available():  # 固定随机种子（GPU)
+        torch.cuda.manual_seed(seed)  # 为当前GPU设置
+        torch.cuda.manual_seed_all(seed)  # 为所有GPU设置
+    np.random.seed(seed)  # 保证后续使用random函数时，产生固定的随机数
+    torch.backends.cudnn.benchmark = False  # GPU、网络结构固定，可设置为True
+    torch.backends.cudnn.deterministic = True  # 固定网络结构
 
 
-def get_exp_name(args):
+def get_exp_name(at_method, dataset, config):
     # time
     curr_time = time.strftime("%m%d%H%M")
 
-    # model name
-    model_name = args.model_name
-
     # attack method
-    if args.at_method == 'nature':
+    if at_method == 'nature':
         exp_name = 'Nature'
-    elif args.at_method == 'standard':
+    elif at_method == 'standard':
         exp_name = f'Standard'
-    elif args.at_method == 'at_free':
+    elif at_method == 'at_free':
         exp_name = f'AT-Free'
-    elif args.at_method == 'at_fast':
+    elif at_method == 'at_fast':
         exp_name = f'AT-Fast'
-    elif args.at_method == 'at_ens':
-        exp_name = f'EnsAT_static-{args.static_model}'
-    elif args.at_method == 'trades':
-        exp_name = f'TRADES_beta-{args.trades_beta}'
-    elif args.at_method == 'mart':
-        exp_name = f'MART_beta-{args.mart_beta}'
-    elif args.at_method == 'mart_trades':
-        exp_name = f'MART_beta-{args.mart_beta}_TRADES_beta-{args.trades_beta}'
-    elif args.at_method == 'ccg':
+    elif at_method == 'at_ens':
+        exp_name = f'EnsAT_static-{config.static_model}'
+    elif at_method == 'trades':
+        exp_name = f'TRADES_beta-{config.TRAIN.trades_beta}'
+    elif at_method == 'mart':
+        exp_name = f'MART_beta-{config.TRAIN.mart_beta}'
+    elif at_method == 'mart_trades':
+        exp_name = f'MART_beta-{config.TRAIN.mart_beta}_TRADES_beta-{config.TRAIN.trades_beta}'
+    elif at_method == 'ccg':
         exp_name = f'CCG'
-    elif args.at_method == 'ccg_trades':
-        exp_name = f'CCG_TRADES_beta-{args.trades_beta}'
+    elif at_method == 'ccg_trades':
+        exp_name = f'CCG_TRADES_beta-{config.TRAIN.trades_beta}'
     else:
         raise 'no match at method'
 
-    exp_name += f'_{args.dataset}_{model_name}_{args.learning_rate}_t{curr_time}'
+    exp_name += f'_{dataset}_{config.TRAIN.arch}_lr-{config.TRAIN.lr}_seed-{config.TRAIN.seed}_t-{curr_time}'
 
     return exp_name
 
@@ -91,3 +91,35 @@ def download_tinyimagenet(args):
               f'{os.path.join(args.root_path, args.data_root, "tiny-imagenet-200")}')
 
 
+def parse_config_file(args):
+    with open(args.config) as f:
+        config = EasyDict(yaml.load(f, Loader=yaml.FullLoader))
+
+    # Add args parameters to the dict
+    for k, v in vars(args).items():
+        config[k] = v
+
+    # Add the output path
+    config.exp_name = get_exp_name(args.method, args.dataset, config)
+    config.root_path = get_project_path()
+    config.log_path = os.path.join(config.root_path, config.SAVE.log, config.exp_name)
+    config.ckp_path = os.path.join(config.root_path, config.SAVE.checkpoint, config.exp_name)
+    config.ADV.TRAIN.eps = config.ADV.TRAIN.eps / 255.
+    config.ADV.TRAIN.alpha = config.ADV.TRAIN.alpha / 255.
+    config.ADV.EVAL.eps = config.ADV.EVAL.eps / 255.
+    config.ADV.EVAL.alpha = config.ADV.EVAL.alpha / 255.
+
+    return config
+
+
+def initialize_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.constant_(m.bias, 0)
+        # 也可以判断是否为conv2d，使用相应的初始化方式
+    elif isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        # 是否为批归一化层
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)

@@ -1,50 +1,83 @@
-# SOTA_AT
+# 🛡️Adversarial Training
 
  Implement of some SOTA method of adversarial training
 
 
+
+## File Structure
+
+> . \
+> ├── adv_lib  
+> ├── checkpoint  
+> ├── config  
+> │   ├── ccg  
+> │   ├── free-at  
+> │   ├── mart  
+> │   ├── nature  
+> │   ├── standard  
+> │   └── trades  
+> ├── data  
+> ├── dataloader  
+> ├── log  
+> ├── model  
+> │   ├── classifiers  
+> ├── script  
+> ├── static_checkpoint  
+> ├── train  
+> └── utils  
+
+
 ## Usage
 
-The option for the training method is as follow:
+### Toy example
 
-> + < at_method > : {standard, trades, mart, ccg, mart+trades, ccg+trades}
-> + < dataset > : {cifar10, cifar100, tinyimagent}
-> + < model > : {wrn34-10, resnet18, resnet50, preactresnet18, vit_s, deit_s}
+`python train.py -c config/standard/standard_cifar10_resnet18.yml --dataset cifar10 --method standard --use_log`
+
+ This command above will run standard adversarial training on CIFAR-10 using ResNet-18
+
+### Args
+
+`-c` : path of the config file
+
+`--dataset`: Training dataset, e.g. cifar10/cifar100/Imagenet
+
+`-m`: method of adversarial training, e.g. standard/trades/mart
+
+`-e`: evaluate model on validation set
+
+`--pretrained`: use pretrained model
+
+`--use_log`: use Tensorboard to log train data
+
+`--gpu_id`: gpu id used for training
 
 
 
-### Training Scripts
+### More examples
 
-+ Natural Training
+train wrn34-10 on cifar-10 using trades
 
-  > Natural Training without adversarial attack
-  > 
-  > `python main.py --at_method standard --model_name wrn3410 --dataset cifar10 --tensorboard` 
+`python train.py -c config/trades/trades_cifar10_wrn3410.yml --dataset cifar10 --method trades --use_log`
 
-+ Standard Adversarial Training
+train wrn34-10 on cifar-10 using mart
 
-  > standard adversarial training on cifar10 using Wide-ResNet34-10
-  >
-  > `python main.py --at_method standard --model_name wrn3410 --dataset cifar10 --tensorboard`
+`python train.py -c config/mart/mart_cifar10_wrn3410.yml --dataset cifar10 --method mart --use_log`
 
-+ Trades
+......
 
-  paper: https://arxiv.org/abs/1901.08573
 
-  > Trades with beta 6.0
-  >
-  > `python main.py --at_method trades --beta 6.0 --model_name wrn3410 --dataset cifar10 --tensorboard`
 
-+ Mart
+The config folder already has a number of configuration files that you can use to complete specific training sessions, or you can create a new config to complete your own custom training sessions.
 
-  > Mart with beta 6.0
-  >
-  > `python main.py --at_method mart --beta 6.0 --model_name wrn3410 --dataset cifar10 --tensorboard`
 
-+ CCG
 
-  > CCG
-  > 
-  > `python main.py --at_method ccg --model_name wrn3410 --dataset cifar10 --tensorboard`
+## Results
 
+release soon
+
+
+
+## Mile stone
+- [ ] release training results
+- [x] amp
 

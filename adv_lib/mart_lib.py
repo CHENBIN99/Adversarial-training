@@ -6,11 +6,12 @@ from torch.autograd import Variable
 
 def mart_loss(model, x_natural, y, optimizer, step_size=0.007, epsilon=0.031, perturb_steps=10, beta=6.0,
               distance='l_inf'):
+    device = x_natural.device
     kl = nn.KLDivLoss(reduction='none')
     model.eval()
     batch_size = len(x_natural)
     # generate adversarial example
-    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).to(device).detach()
     if distance == 'l_inf':
         for _ in range(perturb_steps):
             x_adv.requires_grad_()

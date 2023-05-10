@@ -1,0 +1,56 @@
+TRAIN:
+  # Random Seed
+  seed: 0
+
+  # Number of training epochs
+  epochs: 200
+
+  # Architecture name in TIMM
+  arch: 'wrn40_1'
+
+  # SGD hyper-parameters
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 0.0005
+
+  lr_scheduler_name: 'CosineAnnealingLR'
+
+  # Print frequency, is used for both training and testing
+  print_freq: 50
+  save_ckp_freq: -1
+
+  # use pre-trained weight
+  pretrain: True
+  # compile the model, need Pytorch >= 2.0
+  compile: False
+
+ADV:
+  TRAIN:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 10
+  EVAL:
+    method: 'pgd'
+    eps: 8.0
+    alpha: 2.0
+    iters: 20
+
+DATA:
+  data_path: 'data'
+  workers: 10
+  batch_size: 128
+  image_size: 40
+  crop_size: 32
+  num_class: 10
+  padding: 4
+
+  mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
+  std: !!python/tuple [ 1.0, 1.0, 1.0 ]
+
+  # data aug
+  aug: False
+
+SAVE:
+  log: 'log'
+  checkpoint: 'checkpoint'

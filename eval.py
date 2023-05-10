@@ -91,13 +91,13 @@ if __name__ == '__main__':
 
     # load model
     if args.model_name == 'wideresnet':
-        from model.wideresnet import WideResNet
+        from model.classifiers.wresnet import WideResNet
         model = WideResNet(depth=34, widen_factor=10, num_classes=10 if args.dataset == 'cifar10' else 100)
         model.load_state_dict(torch.load(args.model_path, map_location='cuda:0'))
         model.to(device)
         model.eval()
     elif args.model_name == 'preact':
-        from model.preactresnet import PreActResNet18
+        from model.classifiers.preresnet import PreActResNet18
         model = PreActResNet18()
         model.load_state_dict(torch.load(args.model_path, map_location='cuda:0'))
         model.to(device)

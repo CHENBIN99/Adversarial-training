@@ -1,5 +1,5 @@
 """
-正常的对抗训练
+Base implement of adversarial attack training
 """
 
 import torchattacks
@@ -7,165 +7,157 @@ import torch
 from tqdm import tqdm
 
 from utils.utils import *
+from abc import ABC, abstractmethod
+from utils.AverageMeter import AverageMeter
+from torch.cuda.amp import GradScaler
 
 
-class Trainer_base:
-    def __init__(self, args, writer, attack_name, device, loss_function=torch.nn.CrossEntropyLoss()):
-        self.args = args
+class TrainerBase(object):
+    def __init__(self, cfg, writer, device, loss_function=torch.nn.CrossEntropyLoss()):
+        self.cfg = cfg
         self.writer = writer
         self.device = device
-        self.attack_name = attack_name
         self.loss_fn = loss_function
         # log
+        self.best_epoch = 0
         self.best_clean_acc = 0.
         self.best_robust_acc = 0.
+        self._iter = 1
+        self.amp = cfg.TRAIN.amp
+        if self.amp:
+            self.scaler = GradScaler(enabled=self.amp)
 
-    def get_attack(self, model, epsilon, alpha, iters):
-        if self.attack_name == 'pgd':
-            return torchattacks.PGD(model=model,
-                                    eps=epsilon,
-                                    alpha=alpha,
-                                    steps=iters,
-                                    random_start=True)
-        elif self.attack_name == 'fgsm':
-            return torchattacks.FGSM(model=model,
-                                     eps=epsilon)
-        elif self.attack_name == 'rfgsm':
-            return torchattacks.RFGSM(model=model,
-                                      eps=epsilon,
-                                      alpha=alpha,
-                                      steps=iters)
+    def _get_attack(self, model, attack_name, epsilon, alpha, iters):
+        if attack_name == 'pgd':
+            return torchattacks.PGD(model=model, eps=epsilon, alpha=alpha, steps=iters, random_start=True)
+        elif attack_name == 'fgsm':
+            return torchattacks.FGSM(model=model, eps=epsilon)
+        elif attack_name == 'rfgsm':
+            return torchattacks.RFGSM(model=model, eps=epsilon, alpha=alpha, steps=iters)
         else:
             raise 'no match attack method'
 
-    def get_attack_name(self, train=True, upper=True):
-        if self.attack_name == 'pgd':
-            if train:
-                return f'PGD-{self.args.iters}'
-            else:
-                return f'PGD-{self.args.iters_eval}'
-        elif self.attack_name == 'fgsm':
-            return 'FGSM'
-        elif self.attack_name == 'rfgsm':
-            if train:
-                return f'RFGSM-{self.args.iters}'
-            else:
-                return f'RFGSM-{self.args.iters_eval}'
+    def _get_attack_name(self, train=True):
+        if train:
+            if self.cfg.ADV.TRAIN.method == 'pgd':
+                return f'PGD-{self.cfg.ADV.TRAIN.iters}'
+            elif self.cfg.ADV.TRAIN.method == 'fgsm':
+                return 'FGSM'
+            elif self.cfg.ADV.TRAIN.method == 'rfgsm':
+                return f'RFGSM-{self.cfg.ADV.TRAIN.iters}'
+        else:
+            if self.cfg.ADV.EVAL.method == 'pgd':
+                return f'PGD-{self.cfg.ADV.EVAL.iters}'
+            elif self.cfg.ADV.EVAL.method == 'fgsm':
+                return 'FGSM'
+            elif self.cfg.ADV.EVAL.method == 'rfgsm':
+                return f'RFGSM-{self.cfg.ADV.EVAL.iters}'
 
-    def adjust_learning_rate(self, opt, cur_iters, len_loader, epoch):
-        """
-        Adjust the learning rate during training.
-        :param opt: optimizer
-        :param cur_iters: current iteration
-        :param len_loader: the total number of mini-batch
-        :param epoch: current epoch
-        :return: None
-        """
-        if self.args.lr_schedule == 'milestone':
-            if epoch < int(self.args.ms_1 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.1
-            elif epoch < int(self.args.ms_2 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.01
-            elif epoch < int(self.args.ms_3 * self.args.max_epochs):
-                lr = self.args.learning_rate * 0.001
-        elif self.args.lr_schedule == 'cycle_1':
-            cycle = [0, 2, 12, 24, 30]
-            lr_cycle = [1e-6, 0.4, 0.04, 0.004, 0.0004]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
-        elif self.args.lr_schedule == 'cycle_2':
-            cycle = [0, 1, 10, 45, 50]
-            lr_cycle = [1e-6, 0.2, 0.1, 0.01, 0.001]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
-        elif self.args.lr_schedule == 'cycle_3':
-            cycle = [0, 1, 40, 45, 50]
-            lr_cycle = [1e-6, 0.1, 0.1, 0.01, 0.001]
-            if cur_iters < len_loader * cycle[1]:
-                lr = lr_cycle[0] + (lr_cycle[1] - lr_cycle[0]) / (len_loader * (cycle[1] - cycle[0])) * \
-                     (cur_iters - len_loader * cycle[0])
-            elif cur_iters < len_loader * cycle[2]:
-                lr = lr_cycle[1] - (lr_cycle[1] - lr_cycle[2]) / (len_loader * (cycle[2] - cycle[1])) * \
-                     (cur_iters - len_loader * cycle[1])
-            elif cur_iters < len_loader * cycle[3]:
-                lr = lr_cycle[2] - (lr_cycle[2] - lr_cycle[3]) / (len_loader * (cycle[3] - cycle[2])) * \
-                     (cur_iters - len_loader * cycle[2])
-            elif cur_iters <= len_loader * cycle[4]:
-                lr = lr_cycle[3] - (lr_cycle[3] - lr_cycle[4]) / (len_loader * (cycle[4] - cycle[3])) * \
-                     (cur_iters - len_loader * cycle[3])
+    def get_lr_scheduler(self, opt, scheduler_name, len_dataloader):
+        if scheduler_name == 'MultiStepLR':
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[x * len_dataloader for x in self.cfg.TRAIN.milestone],
+                                                             gamma=self.cfg.TRAIN.gamma)
+        elif scheduler_name == 'CosineAnnealingLR':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cfg.TRAIN.epochs * len_dataloader,
+                                                                   eta_min=1e-6)
+        elif scheduler_name == 'CosineAnnealingWarmRestarts':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(opt, T_0=2 * len_dataloader,
+                                                                             T_mult=2 * len_dataloader)
         else:
             raise NotImplemented
 
-        for param_group in opt.param_groups:
-            param_group["lr"] = lr
+        return scheduler
 
     def save_checkpoint(self, model, epoch, is_best=False):
         if not is_best:
-            file_name = os.path.join(self.args.model_folder, f'checkpoint_{epoch}.pth')
+            file_name = os.path.join(self.cfg.ckp_path, f'checkpoint_{epoch}.pth')
         else:
-            file_name = os.path.join(self.args.model_folder, f'checkpoint_best.pth')
+            file_name = os.path.join(self.cfg.ckp_path, f'checkpoint_best.pth')
         torch.save(model.state_dict(), file_name)
 
-    def train(self, **kwargs):
-        pass
+    def train(self, model, train_loader, valid_loader):
+        opt = torch.optim.SGD(model.parameters(), self.cfg.TRAIN.lr, weight_decay=self.cfg.TRAIN.weight_decay,
+                              momentum=self.cfg.TRAIN.momentum)
+        self.scheduler = self.get_lr_scheduler(opt, self.cfg.TRAIN.lr_scheduler_name, len(train_loader))
+
+        for epoch in range(0, self.cfg.TRAIN.epochs):
+            # training
+            self.train_one_epoch(model, train_loader, opt, epoch)
+
+            # validation
+            valid_acc, valid_adv_acc = self.valid(model, valid_loader)
+            if self.cfg.method == 'nature':
+                if valid_acc >= self.best_clean_acc:
+                    self.best_clean_acc = valid_acc
+                    self.best_robust_acc = valid_adv_acc
+                    self.best_epoch = epoch
+                    self.save_checkpoint(model, epoch, is_best=True)
+            else:
+                if valid_adv_acc >= self.best_robust_acc:
+                    self.best_clean_acc = valid_acc
+                    self.best_robust_acc = valid_adv_acc
+                    self.best_epoch = epoch
+                    self.save_checkpoint(model, epoch, is_best=True)
+
+            if self.cfg.method == 'nature':
+                print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
+                      f'nat_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
+                      f'best_epoch:{self.best_epoch}\tbest_nat_acc:{self.best_clean_acc * 100}%\n')
+            else:
+                print(f'[EVAL] [{epoch}]/[{self.cfg.TRAIN.epochs}]:\n'
+                      f'nat_acc:{valid_acc * 100}%  adv_acc:{valid_adv_acc * 100}%\n'
+                      f'best_epoch:{self.best_epoch}\tbest_rob_acc:{self.best_robust_acc * 100}%\n')
+
+            # write to TensorBoard
+            if self.writer is not None:
+                if self.cfg.method != 'nature':
+                    self.writer.add_scalar('Valid/Nat._Acc', valid_acc, epoch)
+                    self.writer.add_scalar(f'Valid/{self._get_attack_name(train=False)}_Acc', valid_adv_acc, epoch)
+                else:
+                    self.writer.add_scalar('Valid/Nat._Acc', valid_acc, epoch)
+
+            # save checkpoint
+            if self.cfg.TRAIN.save_ckp_freq != -1 and epoch % self.cfg.TRAIN.save_ckp_freq == 0:
+                self.save_checkpoint(model, epoch)
+
+    @abstractmethod
+    def train_one_epoch(self, model, train_loader, optimizer, epoch):
+        ...
 
     def valid(self, model, valid_loader):
-        total_correct_nat = 0
-        total_correct_adv = 0
-        total_acc_nat = 0.
-        total_acc_adv = 0.
-        num = 0
-
-        attack_method = self.get_attack(model, self.args.epsilon, self.args.alpha, self.args.iters_eval)
+        nat_result = AverageMeter()
+        adv_result = AverageMeter()
+        attack_method = self._get_attack(model, self.cfg.ADV.EVAL.method, self.cfg.ADV.EVAL.eps,
+                                         self.cfg.ADV.EVAL.alpha, self.cfg.ADV.EVAL.iters)
 
         model.eval()
-
         with torch.no_grad():
             with tqdm(total=len(valid_loader)) as _tqdm:
                 _tqdm.set_description('Validating:')
                 for idx, (data, label) in enumerate(valid_loader):
                     data, label = data.to(self.device), label.to(self.device)
-                    output = model(data)
-                    pred = torch.max(output, dim=1)[1]
-                    std_acc_num = evaluate(pred.cpu().numpy(), label.cpu().numpy(), 'sum')
+                    n = data.size(0)
 
-                    with torch.enable_grad():
-                        adv_data = attack_method(data, label)
-                    adv_output = model(adv_data)
-                    adv_pred = torch.max(adv_output, dim=1)[1]
-                    adv_acc_num = evaluate(adv_pred.cpu().numpy(), label.cpu().numpy(), 'sum')
+                    # validation using natural data
+                    nat_output = model(data)
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                        astype(int).sum()
+                    nat_result.update(nat_correct_num, n)
 
-                    total_correct_nat += std_acc_num
-                    total_correct_adv += adv_acc_num
-                    num += output.shape[0]
-                    total_acc_nat = total_correct_nat / num
-                    total_acc_adv = total_correct_adv / num
+                    if self.cfg.method != 'nature':
+                        # validation using adversarial data
+                        with torch.enable_grad():
+                            adv_data = attack_method(data, label)
+                        adv_output = model(adv_data)
+                        adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == label.cpu().numpy()). \
+                            astype(int).sum()
+                        adv_result.update(adv_correct_num, n)
 
-                    _tqdm.set_postfix(nat_acc='{:.3f}'.format(total_acc_nat * 100),
-                                      rob_acc='{:.3f}'.format(total_acc_adv * 100))
+                    if self.cfg.method != 'nature':
+                        _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100),
+                                          rob_acc='{:.3f}%'.format(adv_result.acc_avg * 100))
+                    else:
+                        _tqdm.set_postfix(nat_acc='{:.3f}%'.format(nat_result.acc_avg * 100))
                     _tqdm.update(1)
-
         model.train()
-
-        return total_acc_nat, total_acc_adv
-
+        return nat_result.acc_avg, adv_result.acc_avg
