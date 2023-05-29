@@ -6,24 +6,26 @@ TRAIN:
   epochs: 200
 
   # Architecture name in TIMM
-  arch: 'inc_v3'
+  arch: 'resnet18'
 
   # SGD hyper-parameters
   lr: 0.1
   momentum: 0.9
-  weight_decay: 0.0005
+  weight_decay: 0.0002
 
-  lr_scheduler_name: 'CosineAnnealingLR'
+  lr_scheduler_name: 'MultiStepLR'
+  milestone: !!python/tuple [ 100, 150, 175, 195 ]
+  gamma: 0.1
 
   # Print frequency, is used for both training and testing
   print_freq: 50
-  save_ckp_freq: -1
+  save_ckp_freq: 5
 
   # use pre-trained weight
   pretrain: True
   # compile the model, need Pytorch >= 2.0
   compile: False
-  amp: False
+  amp: True
 
 ADV:
   TRAIN:
@@ -43,7 +45,7 @@ DATA:
   batch_size: 128
   image_size: 40
   crop_size: 32
-  num_class: 100
+  num_class: 10
   padding: 4
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]

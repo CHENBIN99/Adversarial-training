@@ -3,36 +3,41 @@ TRAIN:
   seed: 0
 
   # Number of training epochs
-  epochs: 200
+  epochs: 10
 
   # Architecture name in TIMM
-  arch: 'inc_v3'
+  arch: 'inception_v3'
 
   # SGD hyper-parameters
   lr: 0.1
   momentum: 0.9
-  weight_decay: 0.0005
+  weight_decay: 0.0002
 
-  lr_scheduler_name: 'CosineAnnealingLR'
+  lr_scheduler_name: 'MultiStepLR'
+  milestone: !!python/tuple [ 7, 8, 9 ]
+  gamma: 0.1
 
   # Print frequency, is used for both training and testing
   print_freq: 50
-  save_ckp_freq: -1
+  save_ckp_freq: 1
 
   # use pre-trained weight
   pretrain: True
   # compile the model, need Pytorch >= 2.0
   compile: False
-  amp: False
+  amp: True
+
+  static_model: 'ens4'
+  static_model_idx: 2
 
 ADV:
   TRAIN:
-    method: 'pgd'
-    eps: 8.0
-    alpha: 2.0
+    method: 'rfgsm'
+    eps: 16.0
+    alpha: 8.0
     iters: 10
   EVAL:
-    method: 'pgd'
+    method: 'rfgsm'
     eps: 8.0
     alpha: 2.0
     iters: 20
@@ -40,11 +45,11 @@ ADV:
 DATA:
   data_path: 'data'
   workers: 10
-  batch_size: 128
-  image_size: 40
-  crop_size: 32
-  num_class: 100
-  padding: 4
+  batch_size: 256
+  image_size: 224
+  crop_size: 224
+  num_class: 1000
+  padding: 16
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]
   std: !!python/tuple [ 1.0, 1.0, 1.0 ]

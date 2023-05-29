@@ -38,7 +38,7 @@ def get_exp_name(at_method, dataset, config):
     elif at_method == 'at_fast':
         exp_name = f'AT-Fast'
     elif at_method == 'at_ens':
-        exp_name = f'EnsAT_static-{config.static_model}'
+        exp_name = f'EnsAT_static-{config.TRAIN.static_model}'
     elif at_method == 'trades':
         exp_name = f'TRADES_beta-{config.TRAIN.trades_beta}'
     elif at_method == 'mart':
@@ -53,6 +53,9 @@ def get_exp_name(at_method, dataset, config):
         raise 'no match at method'
 
     exp_name += f'_{dataset}_{config.TRAIN.arch}_lr-{config.TRAIN.lr}_seed-{config.TRAIN.seed}_t-{curr_time}'
+
+    if config.TRAIN.amp:
+        exp_name += '_amp'
 
     return exp_name
 

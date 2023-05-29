@@ -23,7 +23,7 @@ TRAIN:
   pretrain: True
   # compile the model, need Pytorch >= 2.0
   compile: False
-  amp: True
+  amp: False
 
 ADV:
   TRAIN:

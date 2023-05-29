@@ -27,14 +27,15 @@ class TrainerStandard(TrainerBase):
                 data, label = data.to(self.device), label.to(self.device)
                 attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.TRAIN.eps,
                                                  self.cfg.ADV.TRAIN.alpha, self.cfg.ADV.TRAIN.iters)
-                adv_data = attack_method(data, label)
 
                 # Forward
                 if self.amp:
                     with autocast():
+                        adv_data = attack_method(data, label)
                         adv_output = model(adv_data)
                         loss = self.loss_fn(adv_output, label)
                 else:
+                    adv_data = attack_method(data, label)
                     adv_output = model(adv_data)
                     loss = self.loss_fn(adv_output, label)
 

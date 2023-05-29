@@ -4,6 +4,8 @@ paper: Consistency Regularization for Adversarial Robustness
 """
 import os
 import sys
+
+import torch
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -24,7 +26,7 @@ class TrainerCCG(TrainerBase):
         adv_result = AverageMeter()
 
         # switch to second dataloader
-        if epoch > self.cfg.TRAIN.max_epochs * self.cfg.TRAIN.ms_1:
+        if epoch > self.cfg.TRAIN.epochs * self.cfg.TRAIN.milestone[0]:
             train_loader = train_loaders[1]
         else:
             train_loader = train_loaders[0]
@@ -32,13 +34,14 @@ class TrainerCCG(TrainerBase):
         with tqdm(total=len(train_loader)) as _tqdm:
             _tqdm.set_description('epoch:{}/{} Training:'.format(epoch + 1, self.cfg.TRAIN.epochs))
             for idx, (datas, labels) in enumerate(train_loader):
-                n = datas.size(0) // 2
+                # n = datas.size(0) // 2
                 data_aug1, data_aug2 = datas[0].to(self.device), datas[1].to(self.device)
                 labels = labels.to(self.device)
                 data_pair = torch.cat([data_aug1, data_aug2], dim=0)
+                n = data_pair.size(0)
 
-                attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.eps,
-                                                 self.cfg.ADV.alpha, self.cfg.ADV.iters_eval)
+                attack_method = self._get_attack(model, self.cfg.ADV.TRAIN.method, self.cfg.ADV.TRAIN.eps,
+                                                 self.cfg.ADV.TRAIN.alpha, self.cfg.ADV.TRAIN.iters)
                 adv_data = attack_method(data_pair, labels.repeat(2))
 
                 # Forward
@@ -73,15 +76,15 @@ class TrainerCCG(TrainerBase):
                 if (idx + 1) % self.cfg.TRAIN.print_freq == 0 or (idx + 1) == len(train_loader):
                     # clean data
                     with torch.no_grad():
-                        nat_output = model(datas)
-                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == labels.cpu().numpy()). \
+                        nat_output = model(data_pair)
+                    nat_correct_num = (torch.max(nat_output, dim=1)[1].cpu().detach().numpy() == labels.repeat(2).cpu().numpy()). \
                         astype(int).sum()
                     nat_result.update(nat_correct_num, n)
 
                     # adv data
                     with torch.no_grad():
                         adv_output = model(adv_data)
-                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == labels.cpu().numpy()). \
+                    adv_correct_num = (torch.max(adv_output, dim=1)[1].cpu().detach().numpy() == labels.repeat(2).cpu().numpy()). \
                         astype(int).sum()
                     adv_result.update(adv_correct_num, n)
 

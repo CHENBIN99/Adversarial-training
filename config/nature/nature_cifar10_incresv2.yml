@@ -6,7 +6,7 @@ TRAIN:
   epochs: 200
 
   # Architecture name in TIMM
-  arch: 'inc_v3'
+  arch: 'inc_resv2'
 
   # SGD hyper-parameters
   lr: 0.1
@@ -20,7 +20,7 @@ TRAIN:
   save_ckp_freq: -1
 
   # use pre-trained weight
-  pretrain: True
+  pretrain: False
   # compile the model, need Pytorch >= 2.0
   compile: False
   amp: False
@@ -43,7 +43,7 @@ DATA:
   batch_size: 128
   image_size: 40
   crop_size: 32
-  num_class: 100
+  num_class: 10
   padding: 4
 
   mean: !!python/tuple [ 0.0, 0.0, 0.0 ]

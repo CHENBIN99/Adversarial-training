@@ -21,14 +21,8 @@ def get_dataloader(cfg):
         return get_dataloader_ccg(cfg)
     else:
         if not cfg.DATA.aug:
-            # transform_train = transforms.Compose([
-            #     transforms.Resize(cfg.DATA.image_size),
-            #     transforms.RandomResizedCrop(cfg.DATA.crop_size),
-            #     transforms.RandomHorizontalFlip(),
-            #     transforms.ToTensor(),
-            #     transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
-            # ])
             transform_train = transforms.Compose([
+                transforms.Resize(cfg.DATA.crop_size),
                 transforms.RandomCrop(cfg.DATA.crop_size, padding=cfg.DATA.padding),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
@@ -85,21 +79,34 @@ def get_dataloader(cfg):
 
 
 def get_dataloader_ccg(cfg):
-    transform_train_1 = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize((cfg.DATA.image_size, cfg.DATA.image_size)),
-        transforms.RandomResizedCrop((cfg.DATA.crop_size, cfg.DATA.crop_size), scale=(0.64, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std)
-    ])
-
-    transform_train_2 = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize((cfg.DATA.image_size, cfg.DATA.image_size)),
-        transforms.RandomResizedCrop((cfg.DATA.crop_size, cfg.DATA.crop_size), scale=(0.64, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std)
-    ])
+    if not cfg.DATA.aug:
+        transform_train_1 = transforms.Compose([
+            transforms.RandomCrop(cfg.DATA.crop_size, padding=cfg.DATA.padding),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
+        ])
+        transform_train_2 = transforms.Compose([
+            transforms.RandomCrop(cfg.DATA.crop_size, padding=cfg.DATA.padding),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
+        ])
+    else:
+        transform_train_1 = transforms.Compose([
+            transforms.Resize(cfg.DATA.image_size),
+            transforms.RandomResizedCrop(cfg.DATA.crop_size),
+            policy[cfg.dataset],
+            transforms.ToTensor(),
+            transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
+        ])
+        transform_train_2 = transforms.Compose([
+            transforms.Resize(cfg.DATA.image_size),
+            transforms.RandomResizedCrop(cfg.DATA.crop_size),
+            policy[cfg.dataset],
+            transforms.ToTensor(),
+            transforms.Normalize(mean=cfg.DATA.mean, std=cfg.DATA.std),
+        ])
 
     transform_test = transforms.Compose([
         transforms.Resize((cfg.DATA.crop_size, cfg.DATA.crop_size)),

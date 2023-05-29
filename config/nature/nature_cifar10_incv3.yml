@@ -20,9 +20,10 @@ TRAIN:
   save_ckp_freq: -1
 
   # use pre-trained weight
-  pretrain: True
+  pretrain: False
   # compile the model, need Pytorch >= 2.0
   compile: False
+  amp: False
 
 ADV:
   TRAIN:

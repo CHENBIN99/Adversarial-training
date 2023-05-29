@@ -63,8 +63,8 @@ def main(cfg):
     elif cfg.method == 'at_fast':
         trainer = train.TrainerFast(cfg, tb_writer, device, m=cfg.TRAIN.m, random_init=True)
     elif cfg.method == 'at_ens':
-        model_static = get_static_model(cfg.TRAIN.static_model_id, cfg.DATA.num_class, device)
-        trainer = train.TrainerEns(cfg, tb_writer, device, static_model=model_static)
+        static_model, holdout_model = get_static_model(cfg.TRAIN.static_model_idx, cfg.DATA.num_class, device)
+        trainer = train.TrainerEns(cfg, tb_writer, device, static_model=static_model, holdout_model=holdout_model)
     elif cfg.method == 'trades':
         trainer = train.TrainerTrades(cfg, tb_writer, device)
     elif cfg.method == 'mart':

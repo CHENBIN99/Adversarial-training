@@ -36,6 +36,10 @@ def get_model(model_name, num_classes, dataset_name, pre_train=False, compile=Fa
             model = classifiers.wresnet.wrn_34_10(num_classes=num_classes)
         elif model_name == 'inc_v3':
             model = classifiers.inception_v3.inception_v3_cifar(num_classes=num_classes)
+        elif model_name == 'inc_v4':
+            model = classifiers.inception_v4.inceptionv4(num_classes=num_classes)
+        elif model_name == 'inc_resv2':
+            model = classifiers.inception_v4.inception_resnet_v2(num_classes=num_classes)
         else:
             raise NotImplemented
     elif dataset_name in ['imagenet']:
@@ -52,45 +56,25 @@ def get_model(model_name, num_classes, dataset_name, pre_train=False, compile=Fa
 def get_static_model(static_model_id, num_class, device):
     if static_model_id == 1:
         static_model = [
-            timm.create_model('inception_v3', pretrained=True).to(device),
-            timm.create_model('resnetv2_50', pretrained=True).to(device),
+            timm.create_model('inception_v3', pretrained=True).to(device).eval(),
+            timm.create_model('resnetv2_50', pretrained=True).to(device).eval(),
         ]
+        holdout_model = timm.create_model('inception_v4', pretrained=True).to(device).eval()
     elif static_model_id == 2:
         static_model = [
-            timm.create_model('inception_v3', pretrained=True).to(device),
-            timm.create_model('resnetv2_50', pretrained=True).to(device),
-            timm.create_model('inception_resnet_v2', pretrained=True).to(device),
+            timm.create_model('inception_v3', pretrained=True).to(device).eval(),
+            timm.create_model('resnetv2_50', pretrained=True).to(device).eval(),
+            timm.create_model('inception_resnet_v2', pretrained=True).to(device).eval(),
         ]
+        holdout_model = timm.create_model('resnet50', pretrained=True).to(device).eval()
     elif static_model_id == 3:
         static_model = [
-            timm.create_model('inception_v3', pretrained=True).to(device),
-            timm.create_model('inception_resnet_v2', pretrained=True).to(device),
+            timm.create_model('inception_v3', pretrained=True).to(device).eval(),
+            timm.create_model('inception_resnet_v2', pretrained=True).to(device).eval(),
         ]
-    elif static_model_id == 4:
-        static_model = [
-            timm.create_model('inception_v3', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
-            timm.create_model('vit_tiny_patch16_224', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/vit_tiny.pth.tar').to(device),
-        ]
-    elif static_model_id == 5:
-        static_model = [
-            timm.create_model('resnet18', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/resnet18.pth.tar').to(device),
-            timm.create_model('inception_v3', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
-            timm.create_model('vit_tiny_patch16_224', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/vit_tiny.pth.tar').to(device),
-        ]
-    elif static_model_id == 6:
-        static_model = [
-            timm.create_model('inception_v3', num_classes=num_class
-                              , checkpoint_path='./static_checkpoint/cifar10/inception_v3.pth.tar').to(device),
-            timm.create_model('deit_tiny_patch16_224', num_classes=num_class,
-                              checkpoint_path='./static_checkpoint/cifar10/deit_tiny.pth.tar').to(device),
-        ]
+        holdout_model = timm.create_model('resnetv2_101', pretrained=True).to(device).eval()
     else:
         raise NotImplemented
 
-    return static_model
+    return static_model, holdout_model
 
