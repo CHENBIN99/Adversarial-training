@@ -6,7 +6,7 @@ TRAIN:
   epochs: 25
 
   # Architecture name in TIMM
-  arch: 'resnet18'
+  arch: 'resnet34'
 
   # SGD hyper-parameters
   lr: 0.1

@@ -6,7 +6,7 @@ TRAIN:
   epochs: 25
 
   # Architecture name in TIMM
-  arch: 'resnet18'
+  arch: 'resnet26'
 
   # SGD hyper-parameters
   lr: 0.1
@@ -25,7 +25,7 @@ TRAIN:
   pretrain: True
   # compile the model, need Pytorch >= 2.0
   compile: False
-  amp: False
+  amp: True
 
   # at-free
   m: 4
